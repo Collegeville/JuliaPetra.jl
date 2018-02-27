@@ -15,7 +15,6 @@ const noComm = in("--comm", ARGS) #don't run comm framework tests
 const noDataStructs = in("--data", ARGS) #don't run tests on data structures
 const noUtil = in("--util", ARGS) #don't run tests on Misc Utils
 
-include("TypeStability.jl")
 include("TestUtil.jl")
 
 

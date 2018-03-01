@@ -681,12 +681,10 @@ function myGlobalElementIDs(map::BlockMap{GID})::AbstractArray{GID} where GID <:
     if length(data.myGlobalElements) == 0
         base = 0:data.numMyElements-1
         rng = data.minMyGID + base
-        myGlobalElements = collect(rng)
+        collect(rng)
     else
-        myGlobalElements = copy(data.myGlobalElements)
+        copy(data.myGlobalElements)
     end
-
-    myGlobalElements
 end
 
 

@@ -105,20 +105,8 @@ function map(vect::MultiVector{Data, GID, PID, LID})::BlockMap{GID, PID, LID} wh
 end
 
 
-# have to use Base.scale! to avoid requiring module qualification everywhere
 """
-    scale!(::MultiVector{Data, GID, PID, LID}, ::Number})::MultiVector{Data, GID, PID, LID}
-
-Scales the mulitvector in place and returns it
-"""
-function Base.scale!(vect::MultiVector, alpha::Number)
-    println("custom scaling")
-    vect.data *= alpha
-    vect
-end
-
-"""
-    scale!(::MultiVector{Data, GID, PID, LID}, ::Number)::MultiVector{Data, GID, PID, LID}
+    scale(::MultiVector{Data, GID, PID, LID}, ::Number)::MultiVector{Data, GID, PID, LID}
 
 Scales a copy of the mulitvector and returns the copy
 """
@@ -127,17 +115,16 @@ function scale(vect::MultiVector, alpha::Number)
 end
 
 """
-    scale!(::MultiVector{Data, GID, PID, LID}, ::AbstractArray{<:Number, 1})::MultiVector{Data, GID, PID, LID}
+     scale!(::MultiVector{Data, GID, PID, LID}, ::AbstractArray{<:Number, 1})::MultiVector{Data, GID, PID, LID}
 
-Scales each column of the mulitvector in place and returns it
-"""
-function Base.scale!(vect::MultiVector, alpha::AbstractArray{<:Number, 1})
-    println("custom vector scaling")
-    for v = 1:vect.numVectors
-        vect.data[:, v] *= alpha[v]
-    end
-    vect
-end
+ Scales each column of the mulitvector in place and returns it
+ """
+ function Base.scale!(vect::MultiVector, alpha::AbstractArray{<:Number, 1})
+     for v = 1:vect.numVectors
+        @inbounds vect.data[:, v] *= alpha[v]
+     end
+     vect
+ end
 
 """
     scale(::MultiVector{Data, GID, PID, LID}, ::AbstractArray{<:Number, 1})::MultiVector{Data, GID, PID, LID}
@@ -306,24 +293,28 @@ end
 
 ### Julia Array API ###
 
-Base.size(A::MultiVector) = (A.globalLength, A.numVectors)
+Base.size(A::MultiVector) = (Int(A.globalLength), Int(A.numVectors))
 
-function Base.getindex(A::MultiVector, I::Vararg{Integer, 2})
+#TODO this might break for funky maps
+Base.indices(A::MultiVector) = (minMyGID(A.map):maxMyGID(A.map), 1:A.numVectors)
+
+function Base.getindex(A::MultiVector, row::Integer, col::Integer)
     @boundscheck begin
-        if !(1<=I[2]<=A.numVectors)
-            throw(BoundsError(A, I))
+        if !(1<=col<=A.numVectors)
+            throw(BoundsError(A, (row, col)))
         end
     end
 
-    lRow = lid(map(A), I[1])
+    lRow = lid(map(A), row)
 
     @boundscheck begin
         if lRow < 1
-            throw(BoundsError(A, I))
+            throw(BoundsError(A, (row, col)))
         end
     end
 
-    @inbounds A.data[lRow, I[2]]
+    @inbounds value = A.data[lRow, col]
+    value
 end
 
 function Base.getindex(A::MultiVector, i::Integer)
@@ -342,22 +333,23 @@ function Base.getindex(A::MultiVector, i::Integer)
     @inbounds A.data[lRow, 1]
 end
 
-function Base.setindex!(A::MultiVector, v, I::Vararg{Integer, 2})
+function Base.setindex!(A::MultiVector, v, row::Integer, col::Integer)
     @boundscheck begin
-        if !(1<=I[2]<=A.numVectors)
-            throw(BoundsError(A, I))
+        if !(1<=col<=A.numVectors)
+            throw(BoundsError(A, (row, col)))
         end
     end
 
-    lRow = lid(map(A), I[1])
+    lRow = lid(map(A), row)
 
     @boundscheck begin
         if lRow < 1
-            throw(BoundsError(A, I))
+            throw(BoundsError(A, (row, col)))
         end
     end
 
-    @inbounds A.data[lRow, I[2]] = v
+    @inbounds value = (A.data[lRow, col] = v)
+    value
 end
 
 function Base.setindex!(A::MultiVector, v, i::Integer)

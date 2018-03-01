@@ -2,7 +2,7 @@
 export Export
 
 """
-Communication plan for data redistribution from a (possibly) multiple-owned to a uniquely owned distribution
+Communication plan for data rekg.ribution from a (possibly) multiple-owned to a uniquely owned distribution
 """
 struct Export{GID <: Integer, PID <:Integer, LID <: Integer}
     exportData::ImportExportData{GID, PID, LID}

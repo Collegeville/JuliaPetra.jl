@@ -3,25 +3,10 @@ export SrcDistRowMatrix, DistRowMatrix, RowMatrix
 export isFillActive, isLocallyIndexed
 export getGraph, getGlobalRowCopy, getLocalRowCopy, getGlobalRowView, getLocalRowView, getLocalDiagCopy, leftScale!, rightScale!
 
-"""
-The version of RowMatrix that isn't a subtype of DestObject
-"""
-abstract type SrcDistRowMatrix{Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer} <: SrcDistObject{GID, PID, LID} 
-end
-
-"""
-The version of RowMatrix that is a subtype of DestObject
-"""
-abstract type DistRowMatrix{Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer} <: DistObject{GID, PID, LID} 
-end
-
 #DECISION are any other mathmatical operations needed?
 
 """
-RowMatrix is the base "type" for all row oriented matrices
-
-RowMatrix is actually a type union of SrcDestRowMatrix and DestRowMatrix,
-which are (direct) subtypes of SrcDestObject and DestObject, respectively.
+RowMatrix is the base type for all row oriented Petra matrices
 
 All subtypes must have the following methods, with Impl standing in for the subtype:
 
@@ -34,7 +19,7 @@ Returns a copy of the given row using global indices
     getLocalRowCopy(matrix::RowMatrix{Data, GID, PID, LID},localRow::Integer)::Tuple{AbstractArray{LID, 1}, AbstractArray{Data, 1}}
 Returns a copy of the given row using local indices
 
-    getGlobalRowView(matrix::RowMatrix{Data, GID, PID, LID},globalRow::Integer)::Tuple{AbstractArray{GID, 1}, AbstractArray{Data, 1}} 
+    getGlobalRowView(matrix::RowMatrix{Data, GID, PID, LID},globalRow::Integer)::Tuple{AbstractArray{GID, 1}, AbstractArray{Data, 1}}
 Returns a view to the given row using global indices
 
     getLocalRowView(matrix::RowMatrix{Data, GID, PID, LID},localRow::Integer)::Tuple{AbstractArray{GID, 1}, AbstractArray{Data, 1}}
@@ -107,7 +92,8 @@ Whether the matrix is lower triangular
     isUpperTriangular(mat::RowMatrix)
 Whether the matrix is upper triangular
 """
-const RowMatrix{Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer} = Union{SrcDistRowMatrix{Data, GID, PID, LID}, DistRowMatrix{Data, GID, PID, LID}}
+abstract type RowMatrix{Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer} <: AbstractArray{Data, 2}
+end
 
 
 
@@ -142,11 +128,11 @@ function getLocalDiagCopyWithoutOffsetsNotFillComplete(A::RowMatrix{Data, GID, P
     localRowMap = getLocalMap(getRowMap(A))
     localColMap = getLocalMap(getColMap(A))
     sorted = isSorted(A.myGraph)
-    
+
     localNumRows = getLocalNumRows(A)
     diag = MultiVector{Data, GID, PID, LID}(getRowMap(A), 1)
     diagLocal1D = getVectorView(diag, 1)
-    
+
     range = 1:localNumRows
     for localRowIndex in range
         diagLocal1D[localRowIndex] = 0
@@ -154,7 +140,7 @@ function getLocalDiagCopyWithoutOffsetsNotFillComplete(A::RowMatrix{Data, GID, P
         localColIndex = lid(localColMap, globalIndex)
         if localColIndex != 0
             indices, values = getLocalRowView(A, localRowIndex)
-            
+
             if !sorted
                 offset = findfirst(indices, localColumnIndex)
             else
@@ -343,7 +329,7 @@ Returns a copy of the given row using local indices
 function getLocalRowCopy end
 
 """
-    getGlobalRowView(matrix::RowMatrix{Data, GID, PID, LID},globalRow::Integer)::Tuple{AbstractArray{GID, 1}, AbstractArray{Data, 1}} 
+    getGlobalRowView(matrix::RowMatrix{Data, GID, PID, LID},globalRow::Integer)::Tuple{AbstractArray{GID, 1}, AbstractArray{Data, 1}}
 
 Returns a view to the given row using global indices
 """
@@ -376,3 +362,39 @@ function leftScale! end
 Scales matrix on the right with X
 """
 function rightScale! end
+
+
+
+### Julia Array functions ###
+Base.size(mat::RowMatrix) = (getGlobalNumRows(mat), getGlobalNumCols(mat))
+
+function Base.getindex(A::RowMatrix, I::Vararg{Int, 2})
+    if isGloballyIndexed(A)
+        @boundscheck begin
+            (n, m) = size(A)
+            if I[1] > n || I[1] < 1 || I[2] > m || I[2] < 1
+                throw(BoundsError(A, I))
+            end
+        end
+        (rowInds, rowVals) = getGlobalRowView(A, I[0])
+        i = 1
+        while i <= length(rowInds)
+            if rowInds[i] == I[1]
+                return rowVals[i]
+            end
+        end
+    else
+        lRow = lid(map(A), I[1])
+        lCol = lid(map(A), I[2])
+        (rowInds, rowVals) = getLocalRowView(A, lRow)
+        i = 1
+        while i <= length(rowInds)
+            if rowInds[i] == lCol
+                return rowVals[i]
+            end
+        end
+    end
+    return 0
+end
+
+#TODO look into setindex!

@@ -11,17 +11,6 @@ export getGlobalRowCopy, getLocalRowCopy, pack
 #implemented methods
 export isFillActive
 
-"""
-The version of RowMatrix that isn't a subtype of DistObject
-"""
-abstract type SrcDistRowGraph{GID <: Integer, PID <: Integer, LID <: Integer} <: SrcDistObject{GID, PID, LID} 
-end
-
-"""
-The version of RowMatrix that is a subtype of DistObject
-"""
-abstract type DistRowGraph{GID <: Integer, PID <: Integer, LID <: Integer} <: DistObject{GID, PID, LID} 
-end
 
 """
 RowGraph is the base "type" for all row oriented storage graphs
@@ -112,7 +101,8 @@ Extracts a copy of the given row of the graph
     pack(::RowGraph{GID, PID, LID}, exportLIDs::AbstractArray{LID, 1}, distor::Distributor{GID, PID, LID})::AbstractArray{AbstractArray{LID, 1}}
 Packs this object's data for import or export
 """
-const RowGraph{GID <: Integer, PID <: Integer, LID <: Integer} = Union{SrcDistRowGraph{GID, PID, LID}, DistRowGraph{GID, PID, LID}}
+abstract type RowGraph{GID <: Integer, PID <: Integer, LID <: Integer}
+end
 
 """
     isFillActive(::RowGraph)

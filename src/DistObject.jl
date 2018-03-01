@@ -1,5 +1,4 @@
 
-export DistObject
 export doImport, doExport
 export copyAndPermute, packAndPrepare, unpackAndCombine, checkSize
 export releaseViews, createViews, createViewsNonConst
@@ -7,6 +6,7 @@ export releaseViews, createViews, createViewsNonConst
 # Note that all packet size information was removed due to the use of julia's
 # built in serialization/objects
 
+#|
 """
 A base type for constructing and using dense multi-vectors, vectors and matrices in parallel.
 
@@ -26,19 +26,33 @@ method returns the array of objects to export
     unpackAndCombine(target::<:DistObject{GID, PID, LID},importLIDs::AbstractArray{LID, 1}, imports::AAbstractrray, distor::Distributor{GID, PID, LID}, cm::CombineMode)
 Perform any unpacking and combining after communication
 """
-abstract type DistObject{GID <:Integer, PID <: Integer, LID <: Integer} <: SrcDistObject{GID, PID, LID}
+|#
+
+
+"""
+Returns true if this object is a distributed global
+"""
+function distributedGlobal(obj)
+    distributedGlobal(map(obj))
+end
+
+
+"""
+Get's the Comm instance being used by this object
+"""
+function comm(obj)
+    comm(map(obj))
 end
 
 
 ## import/export interface ##
 
 """
-    doImport(target::Impl{GID, PID, LID}, source::SrcDistObject{GID, PID, LID}, importer::Import{GID, PID, LID}, cm::CombineMode)
+    doImport(target, source, importer::Import{GID, PID, LID}, cm::CombineMode)
 
 Import data into this object using an Import object ("forward mode")
 """
-function doImport(source::SrcDistObject{GID, PID, LID},
-        target::DistObject{GID, PID, LID}, importer::Import{GID, PID, LID},
+function doImport(source, target, importer::Import{GID, PID, LID},
         cm::CombineMode) where {GID <:Integer, PID <: Integer, LID <: Integer}
     doTransfer(source, target, cm, numSameIDs(importer), permuteToLIDs(importer),
         permuteFromLIDs(importer), remoteLIDs(importer), exportLIDs(importer),
@@ -46,11 +60,11 @@ function doImport(source::SrcDistObject{GID, PID, LID},
 end
 
 """
-    doExport(target::Impl{GID, PID, LID}, source::SrcDistObject{GID, PID, LID}, exporter::Export{GID, PID, LID}, cm::CombineMode)
+    doExport(target, source, exporter::Export{GID, PID, LID}, cm::CombineMode)
 
 Export data into this object using an Export object ("forward mode")
 """
-function doExport(source::SrcDistObject{GID, PID, LID}, target::DistObject{GID, PID, LID},
+function doExport(source, target,
         exporter::Export{GID, PID, LID}, cm::CombineMode) where {
         GID <:Integer, PID <: Integer, LID <: Integer}
     doTransfer(source, target, cm, numSameIDs(exporter), permuteToLIDs(exporter),
@@ -59,11 +73,11 @@ function doExport(source::SrcDistObject{GID, PID, LID}, target::DistObject{GID, 
 end
 
 """
-    doImport(source::SrcDistObject{GID, PID, LID}, target::DistObject{GID, PID, LID}, exporter::Export{GID, PID, LID}, cm::CombineMode)
+    doImport(source, target, exporter::Export{GID, PID, LID}, cm::CombineMode)
 
 Import data into this object using an Export object ("reverse mode")
 """
-function doImport(source::SrcDistObject{GID, PID, LID}, target::DistObject{GID, PID, LID},
+function doImport(source, target,
         exporter::Export{GID, PID, LID}, cm::CombineMode) where {
             GID <:Integer, PID <: Integer, LID <: Integer}
     doTransfer(source, target, cm, numSameIDs(exporter), permuteToLIDs(exporter),
@@ -72,11 +86,11 @@ function doImport(source::SrcDistObject{GID, PID, LID}, target::DistObject{GID, 
 end
 
 """
-    doExport(source::SrcDistObject{GID, PID, LID}, target::DistObject{GID, PID, LID}, importer::Import{GID, PID, LID}, cm::CombineMode)
+    doExport(source, target, importer::Import{GID, PID, LID}, cm::CombineMode)
 
 Export data into this object using an Import object ("reverse mode")
 """
-function doExport(source::SrcDistObject{GID, PID, LID}, target::DistObject{GID, PID, LID},
+function doExport(source, target,
         importer::Import{GID, PID, LID}, cm::CombineMode) where {
             GID <:Integer, PID <: Integer, LID <: Integer}
     doTransfer(source, target, cm, numSameIDs(importer), permuteToLIDs(importer),
@@ -92,19 +106,16 @@ end
 
 Compare the source and target objects for compatiblity.  By default, returns false.  Override this to allow transfering to/from subtypes
 """
-function checkSizes(source::SrcDistObject{GID, PID, LID},
-        target::SrcDistObject{GID, PID, LID})::Bool where {
-            GID <: Integer, PID <: Integer, LID <: Integer}
+function checkSizes(source, target)::Bool
     false
 end
 
 """
-    doTransfer(src::SrcDistObject{GID, PID, LID}, target::Impl{GID, PID, LID}, cm::CombineMode, numSameIDs::LID, permuteToLIDs::AbstractArray{LID, 1}, permuteFromLIDs::AbstractArray{LID, 1}, remoteLIDs::AbstractArray{LID, 1}, exportLIDs::AbstractArray{LID, 1}, distor::Distributor{GID, PID, LID}, reversed::Bool)
+    doTransfer(src, target, cm::CombineMode, numSameIDs::LID, permuteToLIDs::AbstractArray{LID, 1}, permuteFromLIDs::AbstractArray{LID, 1}, remoteLIDs::AbstractArray{LID, 1}, exportLIDs::AbstractArray{LID, 1}, distor::Distributor{GID, PID, LID}, reversed::Bool)
 
 Perform actual redistribution of data across memory images
 """
-function doTransfer(source::SrcDistObject{GID, PID, LID},
-        target::DistObject{GID, PID, LID}, cm::CombineMode,
+function doTransfer(source, target, cm::CombineMode,
         numSameIDs::LID, permuteToLIDs::AbstractArray{LID, 1},
         permuteFromLIDs::AbstractArray{LID, 1}, remoteLIDs::AbstractArray{LID, 1},
         exportLIDs::AbstractArray{LID, 1}, distor::Distributor{GID, PID, LID},
@@ -164,27 +175,27 @@ function doTransfer(source::SrcDistObject{GID, PID, LID},
 end
 
 """
-    createViews(obj::SrcDistObject)
+    createViews(obj)
 
 doTransfer calls this on the source object.  By default it does nothing, but the source object can use this as a hint to fetch data from a compute buffer on an off-CPU decice (such as GPU) into host memory
 """
-function createViews(obj::SrcDistObject)
+function createViews(obj)
 end
 
 """
-    createViewsNonConst(obj::SrcDistObject, readAlso::Bool)
+    createViewsNonConst(obj, readAlso::Bool)
 
 doTransfer calls this on the target object.  By default it does nothing, but the target object can use this as a hint to fetch data from a compute buffer on an off-CPU decice (such as GPU) into host memory
 readAlso indicates whether the doTransfer might read from the original buffer
 """
-function createViewsNonConst(obj::SrcDistObject, readAlso::Bool)
+function createViewsNonConst(obj, readAlso::Bool)
 end
 
 
 """
-    releaseViews(obj::SrcDistObject)
+    releaseViews(obj)
 
 doTransfer calls this on the target and source as it completes to allow any releasing of buffers or views.  By default it does nothing
 """
-function releaseViews(obj::SrcDistObject)
+function releaseViews(obj)
 end

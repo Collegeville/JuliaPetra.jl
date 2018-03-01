@@ -2,7 +2,7 @@ export CRSGraph
 
 #TODO document the type and constructors
 
-mutable struct CRSGraph{GID <: Integer, PID <: Integer, LID <: Integer} <: DistRowGraph{GID, PID, LID}
+mutable struct CRSGraph{GID <: Integer, PID <: Integer, LID <: Integer} <: RowGraph{GID, PID, LID}
     rowMap::BlockMap{GID, PID, LID}
     colMap::Nullable{BlockMap{GID, PID, LID}}
     rangeMap::Nullable{BlockMap{GID, PID, LID}}

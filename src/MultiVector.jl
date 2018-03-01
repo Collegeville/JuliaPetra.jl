@@ -1,6 +1,6 @@
 export MultiVector
 export localLength, globalLength, numVectors, map
-export scale!, scale
+export scale
 export getVectorView, getVectorCopy
 export commReduce, norm2
 
@@ -9,8 +9,8 @@ export commReduce, norm2
 """
 MultiVector represents a dense multi-vector.  Note that all the vectors in a single MultiVector are the same size
 """
-type MultiVector{Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer} <: DistObject{GID, PID, LID}
-    data::Array{Data, 2} # data[1, 2] is the first element of the second matrix
+type MultiVector{Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer} <: AbstractArray{Data, 2}
+    data::Array{Data, 2} # data[1, 2] is the first element of the second vector
     localLength::LID
     globalLength::GID
     numVectors::LID
@@ -107,30 +107,32 @@ end
 
 # have to use Base.scale! to avoid requiring module qualification everywhere
 """
-    scale!(::MultiVector{Data, GID, PID, LID}, ::Data})::MultiVector{Data, GID, PID, LID}
+    scale!(::MultiVector{Data, GID, PID, LID}, ::Number})::MultiVector{Data, GID, PID, LID}
 
 Scales the mulitvector in place and returns it
 """
-function Base.scale!(vect::MultiVector{Data, GID, PID, LID}, alpha::Data)::MultiVector{Data, GID, PID, LID} where {Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer}
-    @. vect.data = vect.data*alpha
+function Base.scale!(vect::MultiVector, alpha::Number)
+    println("custom scaling")
+    vect.data *= alpha
     vect
 end
 
 """
-    scale!(::MultiVector{Data, GID, PID, LID}, ::Data)::MultiVector{Data, GID, PID, LID}
+    scale!(::MultiVector{Data, GID, PID, LID}, ::Number)::MultiVector{Data, GID, PID, LID}
 
 Scales a copy of the mulitvector and returns the copy
 """
-function scale(vect::MultiVector{Data, GID, PID, LID}, alpha::Data)::MultiVector{Data, GID, PID, LID} where {Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer}
+function scale(vect::MultiVector, alpha::Number)
     scale!(copy(vect), alpha)
 end
 
 """
-    scale!(::MultiVector{Data, GID, PID, LID}, ::AbstractArray{Data, 1})::MultiVector{Data, GID, PID, LID}
+    scale!(::MultiVector{Data, GID, PID, LID}, ::AbstractArray{<:Number, 1})::MultiVector{Data, GID, PID, LID}
 
 Scales each column of the mulitvector in place and returns it
 """
-function Base.scale!(vect::MultiVector{Data, GID, PID, LID}, alpha::AbstractArray{Data, 1})::MultiVector{Data, GID, PID, LID} where {Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer}
+function Base.scale!(vect::MultiVector, alpha::AbstractArray{<:Number, 1})
+    println("custom vector scaling")
     for v = 1:vect.numVectors
         vect.data[:, v] *= alpha[v]
     end
@@ -138,11 +140,11 @@ function Base.scale!(vect::MultiVector{Data, GID, PID, LID}, alpha::AbstractArra
 end
 
 """
-    scale(::MultiVector{Data, GID, PID, LID}, ::AbstractArray{Data, 1})::MultiVector{Data, GID, PID, LID}
+    scale(::MultiVector{Data, GID, PID, LID}, ::AbstractArray{<:Number, 1})::MultiVector{Data, GID, PID, LID}
 
 Scales each column of a copy of the mulitvector and returns the copy
 """
-function scale(vect::MultiVector{Data, GID, PID, LID}, alpha::AbstractArray{Data, 1})::MultiVector{Data, GID, PID, LID} where {Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer}
+function scale(vect::MultiVector, alpha::T) where T <: AbstractArray{<:Number, 1}
     scale!(copy(vect), alpha)
 end
 
@@ -298,4 +300,89 @@ function unpackAndCombine(target::MultiVector{Data, GID, PID, LID},
     for i = 1:length(importLIDs)
         target.data[importLIDs[i], :] = imports[i]
     end
+end
+
+
+
+### Julia Array API ###
+
+Base.size(A::MultiVector) = (A.globalLength, A.numVectors)
+
+function Base.getindex(A::MultiVector, I::Vararg{Integer, 2})
+    @boundscheck begin
+        if !(1<=I[2]<=A.numVectors)
+            throw(BoundsError(A, I))
+        end
+    end
+
+    lRow = lid(map(A), I[1])
+
+    @boundscheck begin
+        if lRow < 1
+            throw(BoundsError(A, I))
+        end
+    end
+
+    @inbounds A.data[lRow, I[2]]
+end
+
+function Base.getindex(A::MultiVector, i::Integer)
+    if A.numVectors != 0
+        throw(ArgumentError("Can only use single index if there is just 1 vector"))
+    end
+
+    lRow = lid(map(A), i)
+
+    @boundscheck begin
+        if lRow < 1
+            throw(BoundsError(A, I))
+        end
+    end
+
+    @inbounds A.data[lRow, 1]
+end
+
+function Base.setindex!(A::MultiVector, v, I::Vararg{Integer, 2})
+    @boundscheck begin
+        if !(1<=I[2]<=A.numVectors)
+            throw(BoundsError(A, I))
+        end
+    end
+
+    lRow = lid(map(A), I[1])
+
+    @boundscheck begin
+        if lRow < 1
+            throw(BoundsError(A, I))
+        end
+    end
+
+    @inbounds A.data[lRow, I[2]] = v
+end
+
+function Base.setindex!(A::MultiVector, v, i::Integer)
+    if A.numVectors != 0
+        throw(ArgumentError("Can only use single index if there is just 1 vector"))
+    end
+
+    lRow = lid(map(A), i)
+
+    @boundscheck begin
+        if lRow < 1
+            throw(BoundsError(A, I))
+        end
+    end
+
+    @inbounds A.data[lRow, 1] = v
+end
+
+import Base: ==
+
+function ==(A::MultiVector, B::MultiVector)
+    localEquality = A.localLength == B.localLength &&
+                    A.numVectors == B.numVectors &&
+                    A.data == B.data &&
+                    sameAs(A.map, B.map)
+
+    minAll(comm(A), localEquality)
 end

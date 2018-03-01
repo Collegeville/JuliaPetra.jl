@@ -54,7 +54,7 @@ function multiVectorTests(comm::Comm{UInt64, UInt16, UInt32})
 
     # test scale and scale!
     vect = MultiVector(curMap, ones(Float64, n, 3))
-    @test vect == scale!(vect, pid*5.0)
+    @test vect === scale!(vect, pid*5.0)
     @test pid*5*ones(Float64, (n, 3)) == vect.data
 
     vect = MultiVector(curMap, ones(Float64, n, 3))
@@ -65,7 +65,8 @@ function multiVectorTests(comm::Comm{UInt64, UInt16, UInt32})
     increase = pid*nProcs
 
     vect = MultiVector(curMap, ones(Float64, n, 3))
-    @test vect == scale!(vect, increase+[2.0, 3.0, 4.0])
+    @test vect isa MultiVector
+    @test vect === scale!(vect, increase+[2.0, 3.0, 4.0])
     @test hcat( (increase+2)*ones(Float64, n),
                 (increase+3)*ones(Float64, n),
                 (increase+4)*ones(Float64, n))  == vect.data

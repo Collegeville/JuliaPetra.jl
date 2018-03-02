@@ -117,9 +117,7 @@ isFillActive(matrix::RowMatrix) = !isFillComplete(matrix)
 isLocallyIndexed(matrix::RowMatrix) = !isGloballyIndexed(matrix)
 
 #for SrcDistObject
-function getMap(matrix::RowMatrix)
-    getRowMap(matrix)
-end
+getMap(matrix::RowMatrix) = getRowMap(matrix)
 
 
 #TODO document

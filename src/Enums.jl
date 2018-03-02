@@ -28,12 +28,10 @@ Tells petra whether to use the transpose or conjugate transpose of the matrix
 
 Checks whether the given TransposeMode is transposed
 """
-@inline function isTransposed(mode::TransposeMode)::Bool
-    mode != NO_TRANS
-end
+@inline isTransposed(mode::TransposeMode) = mode != NO_TRANS
 
 
-function applyConjugation(mode::TransposeMode, val::T)::T where T
+function applyConjugation(mode::TransposeMode, val)
     if mode == CONJ_TRANS
         conj(val)
     else
@@ -41,9 +39,7 @@ function applyConjugation(mode::TransposeMode, val::T)::T where T
     end
 end
 
-function applyConjugation(mode::TransposeMode, val::T)::T where {T <: Real}
-    val
-end
+applyConjugation(mode::TransposeMode, val::Real) = val
 
 
 """
@@ -63,5 +59,3 @@ Status of the graph's or matrix's storage, when not in
 a fill-complete state.
 """
 @enum StorageStatus STORAGE_2D STORAGE_1D_UNPACKED STORAGE_1D_PACKED
-
-

@@ -37,14 +37,9 @@ SrcDistObject requires getMap(::SrcDistObject)
 """
 Returns true if this object is a distributed global
 """
-function distributedGlobal(obj)
-    distributedGlobal(getMap(obj))
-end
+distributedGlobal(obj) = distributedGlobal(getMap(obj))
 
-
-function getComm(obj)
-    getComm(getMap(obj))
-end
+getComm(obj) = getComm(getMap(obj))
 
 
 ## import/export interface ##
@@ -108,9 +103,7 @@ end
 
 Compare the source and target objects for compatiblity.  By default, returns false.  Override this to allow transfering to/from subtypes
 """
-function checkSizes(source, target)::Bool
-    false
-end
+checkSizes(source, target) = false
 
 """
     doTransfer(src, target, cm::CombineMode, numSameIDs::LID, permuteToLIDs::AbstractArray{LID, 1}, permuteFromLIDs::AbstractArray{LID, 1}, remoteLIDs::AbstractArray{LID, 1}, exportLIDs::AbstractArray{LID, 1}, distor::Distributor{GID, PID, LID}, reversed::Bool)

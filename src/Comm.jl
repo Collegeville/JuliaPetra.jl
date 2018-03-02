@@ -57,58 +57,61 @@ function Base.show(io::IO, comm::Comm)
 end
 
 """
-    broadcastAll(::Comm, ::T, ::Integer)::T
+    broadcastAll(::Comm, myVals::T, root::Integer)::T
+    broadcastAll(comm::Comm, myVals::AbstractArray{T, 1}, root::Integer)::Array{T, 1}
 
-As `broadcastAll(::Comm, ::AbstractArray{T, 1}, ::Integer})::Array{T, 1}`, except only broadcasts a single elements
+Takes a list of input values from the root processor and sends it to each
+other processor.  The broadcasted values are then returned, including on
+the root process.
 """
-function broadcastAll(comm::Comm, myVal::T, root::Integer)::T where T
-    broadcastAll(comm, [myVal], root)[1]
-end
-
-"""
-    gatherAll(::Comm, ::T)::Array{T, 1}
-
-As `gatherAll(::Comm, ::AbstractArray{T, 1}})::Array{T, 1}`, except each process only sends a single elements
-"""
-function gatherAll(comm::Comm, myVal::T)::Array{T, 1} where T
-    gatherAll(comm, [myVal])
-end
+broadcastAll(comm::Comm, myVal, root) = broadcastAll(comm, [myVal], root)[1]
 
 """
-    sumAll(::Comm, ::T)::T
+    gatherAll(::Comm, myVal::T)::Array{T, 1}
+    gatherAll(comm::Comm, myVals::AbstractArray{T, 1})::Array{T, 1}
 
-As `sumAll(::Comm, ::AbstractArray{T, 1}})::Array{T, 1}`, except for a single element
+Takes a list of input values from all processors and returns an ordered,
+contiguous list of those values.
 """
-function sumAll(comm::Comm, val::T)::T where T
-    sumAll(comm, [val])[1]
-end
-
-"""
-    maxAll(::Comm, ::T)::T
-
-As `maxAll(::Comm, ::AbstractArray{T, 1}})::Array{T, 1}`, except for a single element
-"""
-function maxAll(comm::Comm, val::T)::T where T
-    maxAll(comm, [val])[1]
-end
+gatherAll(comm::Comm, myVal) = gatherAll(comm, [myVal])
 
 """
-    minAll(::Comm, ::T)::T
+    sumAll(::Comm, partialsum::T)::T
+    sumAll(comm::Comm, partialsums::AbstractArray{T, 1})::Array{T, 1}
 
-As `minAll(::Comm, ::AbstractArray{T, 1}})::Array{T, 1}`, except for a single element
+Takes a list of input values from all processors and returns the sum on each
+processor.  The method `+(::T, ::T)::T` must exist.
 """
-function minAll(comm::Comm, val::T)::T where T
-    minAll(comm, [val])[1]
-end
+sumAll(comm::Comm, val) = sumAll(comm, [val])[1]
 
 """
-    scanSum(::Comm, ::T)::T
+    maxAll(::Comm, partialmax::T)::T
+    maxAll(comm::Comm, partialmaxes::AbstractArray{T, 1})::Array{T, 1}
 
-As `scanSum(::Comm, ::AbstractArray{T, 1}})::Array{T, 1}`, except for a single element
+Takes a list of input values from all processors and returns the max to all
+processors.  The method `<(::T, ::T)::Bool` must exist.
 """
-function scanSum(comm::Comm, val::T)::T where T
-    scanSum(comm, [val])[1]
-end
+maxAll(comm::Comm, val) = maxAll(comm, [val])[1]
+
+"""
+    minAll(::Comm, partialmin::T)::T
+    minAll(comm::Comm, partialmins::AbstractArray{T, 1})::Array{T, 1}
+
+Takes a list of input values from all processors and returns the min to all
+processors.  The method `<(::T, ::T)::Bool` must exist.
+"""
+minAll(comm::Comm, val) = minAll(comm, [val])[1]
+
+"""
+    scanSum(::Comm, myval::T)::T
+    scanSum(comm::Comm, myvals::AbstractArray{T, 1})::Array{T, 1}
+
+Takes a list of input values from all processors, computes the scan sum and
+returns it to all processors such that processor `i` contains the sum of
+values from processor 1 up to, and including, processor `i`.  The method
++(::T, ::T)::T must exist
+"""
+scanSum(comm::Comm, val) = scanSum(comm, [val])[1]
 
 
 
@@ -121,57 +124,6 @@ Causes the process to pause until all processes have called barrier.  Used to sy
 """
 function barrier end
 
-
-"""
-    broadcastAll(comm::Comm, myVals::AbstractArray{T, 1}, root::Integer)::Array{T, 1}
-
-Takes a list of input values from the root processor and sends it to each
-other processor.  The broadcasted values are then returned, including on
-the root process.
-"""
-function broadcastAll end
-
-"""
-    gatherAll(comm::Comm, myVals::AbstractArray{T, 1})::Array{T, 1}
-
-Takes a list of input values from all processors and returns an ordered,
-contiguous list of those values.
-"""
-function gatherAll end
-
-"""
-    sumAll(comm::Comm, partialsums::AbstractArray{T, 1})::Array{T, 1}
-
-Takes a list of input values from all processors and returns the sum on each
-processor.  The method `+(::T, ::T)::T` must exist.
-"""
-function sumAll end
-
-"""
-    maxAll(comm::Comm, partialmaxes::AbstractArray{T, 1})::Array{T, 1}
-
-Takes a list of input values from all processors and returns the max to all
-processors.  The method `<(::T, ::T)::Bool` must exist.
-"""
-function maxAll end
-
-"""
-    minAll(comm::Comm, partialmins::AbstractArray{T, 1})::Array{T, 1}
-
-Takes a list of input values from all processors and returns the min to all
-processors.  The method `<(::T, ::T)::Bool` must exist.
-"""
-function minAll end
-
-"""
-    scanSum(comm::Comm, myvals::AbstractArray{T, 1})::Array{T, 1}
-
-Takes a list of input values from all processors, computes the scan sum and
-returns it to all processors such that processor `i` contains the sum of
-values from processor 1 up to, and including, processor `i`.  The method
-+(::T, ::T)::T must exist
-"""
-function scanSum end
 
 """
     myPid(::Comm{GID, PID, LID})::PID
@@ -200,4 +152,4 @@ function createDistributor end
 
 Gets the Comm for the object, if aplicable
 """
-function getComm end
+getComm(comm::Comm) = comm

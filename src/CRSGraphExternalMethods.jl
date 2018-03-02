@@ -638,6 +638,4 @@ end
 
 Gets the profile type of the graph
 """
-function getProfileType(graph::CRSGraph)
-    graph.pftype
-end
+getProfileType(graph::CRSGraph) = graph.pftype

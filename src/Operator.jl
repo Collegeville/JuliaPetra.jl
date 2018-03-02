@@ -61,4 +61,3 @@ end
 function apply(Y::MultiVector{Data, GID, PID, LID}, operator::Any, X::MultiVector{Data, GID, PID, LID}, alpha::Data, beta=0)::MultiVector{Data, GID, PID, LID} where {Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer}
     apply(Y, operator, X, NO_TRANS, alpha, beta)
 end
-

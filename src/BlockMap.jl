@@ -371,9 +371,7 @@ getComm(map::BlockMap) = map.data.comm
 Return true if the GID passed in belongs to the calling processor in this
 map, otherwise returns false.
 """
-function myGID(map::BlockMap, gidVal::Integer)
-    lid(map, gidVal) != 0
-end
+myGID(map::BlockMap, gidVal) = lid(map, gidVal) != 0
 
 """
     myLID(map::BlockMap, lidVal::Integer)
@@ -381,45 +379,35 @@ end
 Return true if the LID passed in belongs to the calling processor in this
 map, otherwise returns false.
 """
-@inline function myLID(map::BlockMap, lidVal::Integer)
-    gid(map, lidVal) != 0
-end
+@inline myLID(map::BlockMap, lidVal) = gid(map, lidVal) != 0
 
 """
     distributedGlobal(map::BlockMap)
 
 Return true if map is defined across more than one processor
 """
-function distributedGlobal(map::BlockMap)
-    map.data.distributedGlobal
-end
+distributedGlobal(map::BlockMap) = map.data.distributedGlobal
 
 """
     numMyElements(map::BlockMap{GID, PID, LID})::LID
 
 Return the number of elements across the calling processor
 """
-function numMyElements(map::BlockMap{GID, PID, LID})::LID where GID <: Integer where PID <: Integer where LID <: Integer
-    map.data.numMyElements
-end
+numMyElements(map::BlockMap) = map.data.numMyElements
 
 """
     minMyGID(map::BlockMap{GID, PID, LID})::GID
 
 Return the minimum global ID owned by this processor
 """
-function minMyGID(map::BlockMap{GID, PID, LID})::GID where GID <: Integer where PID <: Integer where LID <: Integer
-    map.data.minMyGID
-end
+minMyGID(map::BlockMap) = map.data.minMyGID
 
 """
     maxMyGID(map::BlockMap{GID, PID, LID})::GID
 
 Return the maximum global ID owned by this processor
 """
-function maxMyGID(map::BlockMap{GID, PID, LID})::GID where GID <: Integer where PID <: Integer where LID <: Integer
-    map.data.maxMyGID
-end
+maxMyGID(map::BlockMap) = map.data.maxMyGID
 
 """
     getLocalMap(::BlockMap{GID, PID, LID})::BlockMap{GID, PID, LID}
@@ -521,36 +509,28 @@ end
 
 Return the minimum global ID across the entire map
 """
-function minAllGID(map::BlockMap{GID})::GID where GID <: Integer
-    map.data.minAllGID
-end
+minAllGID(map::BlockMap) = map.data.minAllGID
 
 """
     maxAllGID(map::BlockMap{GID, PID, LID})::GID
 
 Return the maximum global ID across the entire map
 """
-function maxAllGID(map::BlockMap{GID})::GID where GID <: Integer
-    map.data.maxAllGID
-end
+maxAllGID(map::BlockMap) = map.data.maxAllGID
 
 """
     minLID(map::BlockMap{GID, PID, LID})::LID
 
 Return the mimimum local index value on the calling processor
 """
-function minLID(map::BlockMap{GID, PID, LID})::LID where GID <: Integer where PID <: Integer where LID <: Integer
-    map.data.minLID
-end
+minLID(map::BlockMap) = map.data.minLID
 
 """
     maxLID(map::BlockMap{GID, PID, LID})::LID
 
 Return the maximum local index value on the calling processor
 """
-function maxLID(map::BlockMap{GID, PID, LID})::LID where GID <: Integer where PID <: Integer where LID <: Integer
-    map.data.maxLID
-end
+maxLID(map::BlockMap) = map.data.maxLID
 
 ##size/dimension accessor functions##
 
@@ -559,9 +539,7 @@ end
 
 Return the number of elements across all processors
 """
-function numGlobalElements(map::BlockMap{GID})::GID where GID <: Integer
-    map.data.numGlobalElements
-end
+numGlobalElements(map::BlockMap) = map.data.numGlobalElements
 
 """
     myGlobalElements(map::BlockMap{GID, PID, LID})::AbstractArray{GID}
@@ -590,9 +568,7 @@ end
 
 Return true if each map GID exists on at most 1 processor
 """
-function uniqueGIDs(map::BlockMap)::Bool
-    isOneToOne(map)
-end
+uniqueGIDs(map::BlockMap) = isOneToOne(map)
 
 
 """
@@ -600,28 +576,22 @@ end
 
 Return the type used for global indices in the map
 """
-function globalIndicesType(map::BlockMap{GID})::Type{GID} where GID <: Integer
-    GID
-end
+globalIndicesType(map::BlockMap{GID}) where GID <: Integer = GID
 
 """
     sameBlockMapDataAs(this::BlockMap, other::BlockMap)::Bool
 
 Return true if the maps have the same data
 """
-function sameBlockMapDataAs(this::BlockMap, other::BlockMap)::Bool
-    this.data == other.data
-end
+sameBlockMapDataAs(this::BlockMap, other::BlockMap) = this.data == other.data
 
 """
     sameAs(this::BlockMap, other::BlockMap)::Bool
 
 Return true if this and other are identical maps
 """
-function sameAs(this::BlockMap, other::BlockMap)
-    # behavior by specification
-    false
-end
+# behavior by specification
+sameAs(this::BlockMap, other::BlockMap) = false
 
 function sameAs(this::BlockMap{GID, PID, LID}, other::BlockMap{GID, PID, LID})::Bool where GID <: Integer where PID <: Integer where LID <: Integer
     tData = this.data
@@ -666,9 +636,7 @@ end
 Return true if the global ID space is contiguously divided (but
 not necessarily uniformly) across all processors
 """
-function linearMap(map::BlockMap)::Bool
-    map.data.linearMap
-end
+linearMap(map::BlockMap) = map.data.linearMap
 
 
 ##Array accessor functions##

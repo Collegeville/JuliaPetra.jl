@@ -1,5 +1,5 @@
 export MultiVector
-export localLength, globalLength, numVectors, map
+export localLength, globalLength, numVectors
 export scale
 export getVectorView, getVectorCopy
 export commReduce, norm2
@@ -96,11 +96,11 @@ function numVectors(vect::MultiVector{Data, GID, PID, LID})::LID where {Data <: 
 end
 
 """
-    map(::MultiVector{Data, GID, PID, LID})::BlockMap{GID, PID, LID}
+    getMap(::MultiVector{Data, GID, PID, LID})::BlockMap{GID, PID, LID}
 
 Returns the BlockMap used by this multivector
 """
-function map(vect::MultiVector{Data, GID, PID, LID})::BlockMap{GID, PID, LID} where {Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer}
+function getMap(vect::MultiVector{Data, GID, PID, LID})::BlockMap{GID, PID, LID} where {Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer}
     vect.map
 end
 
@@ -160,7 +160,7 @@ function Base.dot(vect1::MultiVector{Data, GID, PID, LID}, vect2::MultiVector{Da
         dotProducts[vect] = sum
     end
 
-    dotProducts = sumAll(comm(vect1), dotProducts)
+    dotProducts = sumAll(getComm(vect1), dotProducts)
 
     dotProducts
 end
@@ -199,9 +199,10 @@ function commReduce(mVect::MultiVector)
         throw(InvalidArgumentError("Cannot reduce distributed MultiVector"))
     end
 
-    mVect.data = sumAll(comm(mVect), mVect.data)
+    mVect.data = sumAll(getComm(mVect), mVect.data)
 end
 
+#TODO implement this as Base.norm(vect, n)
 """
 Handles the non-infinate norms
 """
@@ -225,7 +226,7 @@ macro normImpl(mVect, Data, normType)
             norms[i] = sum
         end
 
-        norms = sumAll(comm(map($(esc(mVect)))), norms)
+        norms = sumAll(getComm(getMap($(esc(mVect)))), norms)
 
         $(if normType == 2
             :(@. norms = sqrt(norms))
@@ -306,7 +307,7 @@ function Base.getindex(A::MultiVector, row::Integer, col::Integer)
         end
     end
 
-    lRow = lid(map(A), row)
+    lRow = lid(getMap(A), row)
 
     @boundscheck begin
         if lRow < 1
@@ -323,7 +324,7 @@ function Base.getindex(A::MultiVector, i::Integer)
         throw(ArgumentError("Can only use single index if there is just 1 vector"))
     end
 
-    lRow = lid(map(A), i)
+    lRow = lid(getMap(A), i)
 
     @boundscheck begin
         if lRow < 1
@@ -341,7 +342,7 @@ function Base.setindex!(A::MultiVector, v, row::Integer, col::Integer)
         end
     end
 
-    lRow = lid(map(A), row)
+    lRow = lid(getMap(A), row)
 
     @boundscheck begin
         if lRow < 1
@@ -358,7 +359,7 @@ function Base.setindex!(A::MultiVector, v, i::Integer)
         throw(ArgumentError("Can only use single index if there is just 1 vector"))
     end
 
-    lRow = lid(map(A), i)
+    lRow = lid(getMap(A), i)
 
     @boundscheck begin
         if lRow < 1
@@ -377,5 +378,5 @@ function ==(A::MultiVector, B::MultiVector)
                     A.data == B.data &&
                     sameAs(A.map, B.map)
 
-    minAll(comm(A), localEquality)
+    minAll(getComm(A), localEquality)
 end

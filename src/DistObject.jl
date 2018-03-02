@@ -2,11 +2,12 @@
 export doImport, doExport
 export copyAndPermute, packAndPrepare, unpackAndCombine, checkSize
 export releaseViews, createViews, createViewsNonConst
+export getMap
 
 # Note that all packet size information was removed due to the use of julia's
 # built in serialization/objects
 
-#|
+#=
 """
 A base type for constructing and using dense multi-vectors, vectors and matrices in parallel.
 
@@ -26,22 +27,23 @@ method returns the array of objects to export
     unpackAndCombine(target::<:DistObject{GID, PID, LID},importLIDs::AbstractArray{LID, 1}, imports::AAbstractrray, distor::Distributor{GID, PID, LID}, cm::CombineMode)
 Perform any unpacking and combining after communication
 """
-|#
+
+"""
+SrcDistObject requires getMap(::SrcDistObject)
+"""
+=#
 
 
 """
 Returns true if this object is a distributed global
 """
 function distributedGlobal(obj)
-    distributedGlobal(map(obj))
+    distributedGlobal(getMap(obj))
 end
 
 
-"""
-Get's the Comm instance being used by this object
-"""
-function comm(obj)
-    comm(map(obj))
+function getComm(obj)
+    getComm(getMap(obj))
 end
 
 
@@ -132,7 +134,7 @@ function doTransfer(source, target, cm::CombineMode,
     readAlso = true #from TPetras rwo
     if cm == INSERT || cm == REPLACE
         numIDsToWrite = numSameIDs + length(permuteToLIDs) + length(remoteLIDs)
-        if numIDsToWrite == numMyElements(map(target))
+        if numIDsToWrite == numMyElements(getMap(target))
             # overwriting all local data in the destination, so write-only suffices
 
             #TODO look at FIXME on line 503

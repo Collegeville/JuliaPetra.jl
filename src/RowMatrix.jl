@@ -50,7 +50,7 @@ However, the following methods are implemented by redirecting the call to the ma
 
     rangeMap(operator::RowMatrix{Data, GID, PID, LID})::BlockMap{GID, PID, LID}
 
-The required methods from DistObject must also be implemented.  `map(...)`, as required by SrcDistObject, is implemented to forward the call to `rowMap(...)`
+The required methods from DistObject must also be implemented.  `getMap(...)`, as required by SrcDistObject, is implemented to forward the call to `getRowMap(...)`
 
 
 The following methods are currently implemented by redirecting the call to the matrix's graph by calling `getGraph(matrix)`.  It is recommended that the implmenting class implements these more efficiently.
@@ -117,7 +117,7 @@ isFillActive(matrix::RowMatrix) = !isFillComplete(matrix)
 isLocallyIndexed(matrix::RowMatrix) = !isGloballyIndexed(matrix)
 
 #for SrcDistObject
-function map(matrix::RowMatrix)
+function getMap(matrix::RowMatrix)
     getRowMap(matrix)
 end
 
@@ -370,9 +370,9 @@ Base.size(mat::RowMatrix) = (getGlobalNumRows(mat), getGlobalNumCols(mat))
 
 #TODO this might break for funky maps, however indices needs to return a unit range
 Base.indices(A::RowMatrix{GID}) where GID = if hasColMap(A)
-        (minMyGID(rowMap(A)):maxMyGID(rowMap(A)), minMyGID(getColMap(A)):maxMyGID(getColMap(A)))
+        (minMyGID(getRowMap(A)):maxMyGID(getRowMap(A)), minMyGID(getColMap(A)):maxMyGID(getColMap(A)))
     else
-        (minMyGID(rowMap(A)):maxMyGID(rowMap(A)), GID(1):getGlobalNumCols(A))
+        (minMyGID(getRowMap(A)):maxMyGID(getRowMap(A)), GID(1):getGlobalNumCols(A))
     end
 
 function Base.getindex(A::RowMatrix, I::Vararg{Int, 2})
@@ -391,8 +391,8 @@ function Base.getindex(A::RowMatrix, I::Vararg{Int, 2})
             end
         end
     else
-        lRow = lid(map(A), I[1])
-        lCol = lid(map(A), I[2])
+        lRow = lid(getMap(A), I[1])
+        lCol = lid(getMap(A), I[2])
         (rowInds, rowVals) = getLocalRowView(A, lRow)
         i = 1
         while i <= length(rowInds)

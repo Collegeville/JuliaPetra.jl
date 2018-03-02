@@ -35,7 +35,7 @@ function Import(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID}
     importData = ImportExportData(source, target)
 
     if @debug
-        info("$(myPid(comm(source))): Import ctor expert\n")
+        info("$(myPid(getComm(source))): Import ctor expert\n")
     end
 
     const remoteLIDs = JuliaPetra.remoteLIDs(importData)
@@ -103,7 +103,7 @@ end
 function Import(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID}, remotePIDs::Nullable{AbstractArray{PID}}, plist::Dict{Symbol}) where {GID <: Integer, PID <: Integer, LID <: Integer}
 
     if @debug
-        info("$(myPid(comm(source))): Import ctor\n")
+        info("$(myPid(getComm(source))): Import ctor\n")
     end
 
     const impor = Import{GID, PID, LID}(ImportExportData(source, target))
@@ -111,13 +111,13 @@ function Import(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID}
     const remoteGIDs = setupSamePermuteRemote(impor)
 
     if @debug
-        info("$(myPid(comm(source))): Import ctor: setupSamePermuteRemote done\n")
+        info("$(myPid(getComm(source))): Import ctor: setupSamePermuteRemote done\n")
     end
     if distributedGlobal(source)
         setupExport(impor, remoteGIDs, remotePIDs)
     end
     if @debug
-        info("$(myPid(comm(source))): Import ctor: done\n")
+        info("$(myPid(getComm(source))): Import ctor: done\n")
     end
 
     impor
@@ -198,7 +198,7 @@ function setupExport(impor::Import{GID, PID, LID}, remoteGIDs::AbstractArray{GID
     if !useRemotePIDs
         newRemotePIDs = Array{PID, 1}(length(remoteGIDs))
         if @debug
-            info("$(myPid(comm(source))): setupExport(Import): about to call " *
+            info("$(myPid(getComm(source))): setupExport(Import): about to call " *
                 "getRemoteIndexList on sourceMap\n")
         end
         (remoteProcIDs, remoteLIDs) = remoteIDList(source, remoteGIDs)
@@ -278,7 +278,7 @@ function setupExport(impor::Import{GID, PID, LID}, remoteGIDs::AbstractArray{GID
     end
 
     if @debug
-        info("$(myPid(comm(source))): setupExport: done\n")
+        info("$(myPid(getComm(source))): setupExport: done\n")
     end
 end
 

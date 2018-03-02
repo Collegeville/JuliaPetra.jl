@@ -1,6 +1,7 @@
 export Comm
 export barrier, broadcastAll, gatherAll, sumAll, maxAll, minAll, scanSum
 export myPid, numProc, createDistributor
+export getComm
 
 # methods (and docs) are currently based straight off Epetra_Comm
 # tpetra's equivalent seemed to be a wrapper to other Trilinos packages
@@ -125,7 +126,7 @@ function barrier end
     broadcastAll(comm::Comm, myVals::AbstractArray{T, 1}, root::Integer)::Array{T, 1}
 
 Takes a list of input values from the root processor and sends it to each
-other processor.  The broadcasted values are then returned, including on 
+other processor.  The broadcasted values are then returned, including on
 the root process.
 """
 function broadcastAll end
@@ -192,3 +193,11 @@ function numProc end
 Creates a distributor for the given Comm object
 """
 function createDistributor end
+
+
+"""
+    getComm(obj)
+
+Gets the Comm for the object, if aplicable
+"""
+function getComm end

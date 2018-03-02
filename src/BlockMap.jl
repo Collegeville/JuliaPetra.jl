@@ -363,6 +363,8 @@ end
 
 ##### external methods #####
 
+getComm(map::BlockMap) = map.data.comm
+
 """
     myGID(map::BlockMap, gidVal::Integer)
 
@@ -707,13 +709,4 @@ function determineIsOneToOne(map::BlockMap)::Bool
         end
        gidsAllUniquelyOwned(get(data.directory))
     end
-end
-
-"""
-    comm(map::BlockMap{GID, PID, LID})::Comm{GID, PID, LID}
-
-Return the Comm for the map
-"""
-function comm(map::BlockMap{GID, PID, LID})::Comm{GID, PID, LID} where GID <: Integer where PID <: Integer where LID <: Integer
-    map.data.comm
 end

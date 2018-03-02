@@ -21,9 +21,9 @@ type BasicDirectory{GID <: Integer, PID <:Integer, LID <: Integer} <: Directory{
     function BasicDirectory{GID, PID, LID}(map::BlockMap{GID, PID, LID}) where {GID, PID, LID}
 
         if !(distributedGlobal(map))
-            new(map, Nullable{BlockMap}(), [], [], numProc(comm(map))!=1, [], [])
+            new(map, Nullable{BlockMap}(), [], [], numProc(getComm(map))!=1, [], [])
         elseif linearMap(map)
-            commObj = comm(map)
+            commObj = getComm(map)
 
             allMinGIDs = gatherAll(commObj, minMyGID(map))
             allMinGIDs = vcat(allMinGIDs, [1+maxAllGID(map)])
@@ -126,7 +126,7 @@ function getDirectoryEntries(directory::BasicDirectory{GID, PID, LID}, map::Bloc
     localEntries = Vector{LID}(numEntries)
 
     if !distributedGlobal(map)
-        myPIDVal = myPid(comm(map))
+        myPIDVal = myPid(getComm(map))
 
         for i = 1:numEntries
             lidVal = lid(map, globalEntries[i])
@@ -143,7 +143,7 @@ function getDirectoryEntries(directory::BasicDirectory{GID, PID, LID}, map::Bloc
         minAllGIDVal = minAllGID(map)
         maxAllGIDVal = maxAllGID(map)
 
-        numProcVal = numProc(comm(map))
+        numProcVal = numProc(getComm(map))
 
         n_over_p = numGlobalElements(map)/numProcVal
 
@@ -185,7 +185,7 @@ function getDirectoryEntries(directory::BasicDirectory{GID, PID, LID}, map::Bloc
             localEntries[i] = lid
         end
     else #general case
-        distributor = createDistributor(comm(map))
+        distributor = createDistributor(getComm(map))
 
         dirProcs = remoteIDList(map, numEntries, globalEntries)
 

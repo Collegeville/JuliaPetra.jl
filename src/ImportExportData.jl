@@ -1,25 +1,25 @@
 mutable struct ImportExportData{GID <: Integer, PID <: Integer, LID <: Integer}
     source::BlockMap{GID, PID, LID}
     target::BlockMap{GID, PID, LID}
-    
+
     permuteToLIDs::Array{LID, 1}
     permuteFromLIDs::Array{LID, 1}
     remoteLIDs::Array{LID, 1}
-    
+
     exportLIDs::Array{LID, 1}
     exportPIDs::Array{PID, 1}
-    
+
     numSameIDs::GID
     distributor::Distributor{GID, PID, LID}
-    
+
     isLocallyComplete::Bool
 end
 
 ## Constructors ##
 function ImportExportData(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID})::ImportExportData{GID, PID, LID} where GID <: Integer where PID <:Integer where LID <: Integer
-    ImportExportData{GID, PID, LID}(source, target, [], [], [], [], [], 0, createDistributor(comm(source)), true)
+    ImportExportData{GID, PID, LID}(source, target, [], [], [], [], [], 0, createDistributor(getComm(source)), true)
 end
-    
+
 
 ## Getters ##
 function sourceMap(data::ImportExportData{GID, PID, LID})::BlockMap{GID, PID, LID} where GID <: Integer where PID <:Integer where LID <: Integer

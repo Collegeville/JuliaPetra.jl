@@ -60,7 +60,7 @@ function getLocalRowCopy(graph::CRSGraph{GID, PID, LID}, localRow::LID)::Array{L
 end
 
 function pack(source::CRSGraph{GID, PID, LID}, exportLIDs::AbstractArray{LID, 1}, distor::Distributor{GID, PID, LID})::Array{Array{LID, 1}, 1} where {GID, PID, LID}
-    srcMap = map(source)
+    srcMap = getMap(source)
     [getGlobalRowCopy(source, gid(srcMap, lid)) for lid in exportLIDs]
 end
 
@@ -163,7 +163,7 @@ function unpackAndCombine(target::CRSGraph{GID, PID, LID},
     @assert(isFillActive(target),
         "Import and Export operations require a fill active graph")
 
-    tgtMap = map(target)
+    tgtMap = getMap(target)
 
     for i = 1:length(importLIDs)
         row = imports[i]
@@ -209,7 +209,7 @@ function insertLocalIndices(graph::CRSGraph{GID, PID, LID},
     if !hasColMap(graph)
         throw(InvalidStateError("Cannot insert local indices without a column map"))
     end
-    if !myLID(map(graph), localRow)
+    if !myLID(getMap(graph), localRow)
         throw(InvalidArgumentError("Row does not belong to this process"))
     end
     if !hasRowInfo(graph)
@@ -284,7 +284,7 @@ function insertGlobalIndices(graph::CRSGraph{GID, PID, LID}, globalRow::GID,
                 badColInds = [index for index in indices
                                         if myGid(colMap, index)==0]
                 if length(badColInds) != 0
-                    throw(InvalidArgumentError("$(myPid(comm(graph))): "
+                    throw(InvalidArgumentError("$(myPid(getComm(graph))): "
                         * "Attempted to insert entries in owned row $globalRow, "
                         * "at the following column indices: $indices.\n"
 
@@ -513,7 +513,7 @@ function fillComplete(graph::CRSGraph{GID, PID, LID}, domainMap::BlockMap{GID, P
         throw(InvalidStateError("Graph fill state must be active to call fillComplete(...)"))
     end
 
-    const numProcs = numProc(comm(graph))
+    const numProcs = numProc(getComm(graph))
 
     const assertNoNonlocalInserts = get(plist, :noNonlocalChanges, false)
 
@@ -556,7 +556,7 @@ function makeColMap(graph::CRSGraph{GID, PID, LID}) where {GID, PID, LID}
     error, colMap = __makeColMap(graph, graph.domainMap)
 
     if @debug
-        comm = JuliaPetra.comm(graph)
+        comm = getComm(graph)
         globalError = maxAll(comm, error)
 
         if globalError

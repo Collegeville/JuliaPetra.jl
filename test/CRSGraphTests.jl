@@ -14,19 +14,19 @@ function basicTests(graph)
 end
 
 graph = CRSGraph(map, UInt16(15), STATIC_PROFILE, Dict{Symbol, Any}())
-@test map == JuliaPetra.map(graph)
+@test map == getMap(graph)
 @test STATIC_PROFILE == getProfileType(graph)
 basicTests(graph)
 
 graph = CRSGraph(map, UInt16(15), STATIC_PROFILE, Dict{Symbol, Any}(:debug=>true))
-@test map == JuliaPetra.map(graph)
+@test map == getMap(graph)
 @test STATIC_PROFILE == getProfileType(graph)
 basicTests(graph)
 insertGlobalIndices(graph, 1, [2, 3])
 @test 2 == getNumEntriesInGlobalRow(graph, 1)
 
 graph2 = CRSGraph(map, UInt16(15), DYNAMIC_PROFILE, Dict{Symbol, Any}(:debug=>true))
-@test map == JuliaPetra.map(graph2)
+@test map == getMap(graph2)
 @test DYNAMIC_PROFILE == getProfileType(graph2)
 basicTests(graph2)
 @test 0 == getNumEntriesInGlobalRow(graph2, 1)

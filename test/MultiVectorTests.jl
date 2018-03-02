@@ -14,7 +14,7 @@ function multiVectorTests(comm::Comm{UInt64, UInt16, UInt32})
     @test n == localLength(vect)
     @test nProcs*n == globalLength(vect)
     @test 3 == numVectors(vect)
-    @test curMap == JuliaPetra.map(vect)
+    @test curMap == getMap(vect)
     @test zeros(Float64, (n, 3)) == vect.data
 
     # test basic construction without setting data to zeros
@@ -22,7 +22,7 @@ function multiVectorTests(comm::Comm{UInt64, UInt16, UInt32})
     @test n == localLength(vect)
     @test nProcs*n == globalLength(vect)
     @test 3 == numVectors(vect)
-    @test curMap == JuliaPetra.map(vect)
+    @test curMap == getMap(vect)
 
     # test wrapper constructor
     arr = Array{Float64, 2}(n, 3)
@@ -30,7 +30,7 @@ function multiVectorTests(comm::Comm{UInt64, UInt16, UInt32})
     @test n == localLength(vect)
     @test nProcs*n == globalLength(vect)
     @test 3 == numVectors(vect)
-    @test curMap == JuliaPetra.map(vect)
+    @test curMap == getMap(vect)
     @test arr === vect.data
 
     # test copy
@@ -38,7 +38,7 @@ function multiVectorTests(comm::Comm{UInt64, UInt16, UInt32})
     @test n == localLength(vect)
     @test nProcs*n == globalLength(vect)
     @test 3 == numVectors(vect)
-    @test curMap == JuliaPetra.map(vect)
+    @test curMap == getMap(vect)
     @test vect.data == vect2.data
     @test vect.data !== vect2.data #ensure same contents, but different address
 
@@ -47,7 +47,7 @@ function multiVectorTests(comm::Comm{UInt64, UInt16, UInt32})
     @test localLength(vect) == localLength(vect2)
     @test globalLength(vect) == globalLength(vect2)
     @test numVectors(vect) == numVectors(vect2)
-    @test JuliaPetra.map(vect) == JuliaPetra.map(vect2)
+    @test getMap(vect) == getMap(vect2)
     @test vect.data == vect2.data
     @test vect.data !== vect2.data
 

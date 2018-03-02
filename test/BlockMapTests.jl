@@ -67,7 +67,7 @@ function SerialMapTests(map::BlockMap{Int, Int, Int}, map2::BlockMap{Int, Int, I
 
         @test [1, 2, 3, 4, 5] == myGlobalElementIDs(map)
 
-        @test commVal == comm(map)
+        @test commVal == getComm(map)
 #    end
 end
 

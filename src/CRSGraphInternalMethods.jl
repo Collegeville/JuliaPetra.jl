@@ -36,7 +36,7 @@ const rowInfoSpare = Union{Void, RowInfo}[nothing]
         end
     end
 
-    (@debug) && (myPid(comm(graph)) == 1) && println("can't reuse $(@inbounds rowInfoSpare[1])")
+    (@debug) && (myPid(getComm(graph)) == 1) && println("can't reuse $(@inbounds rowInfoSpare[1])")
     #couldn't reuse, create new instance
     return RowInfo{LID}(graph, localRow, allocSize, numEntries, offset1D)
 end
@@ -121,7 +121,7 @@ function computeGlobalConstants(graph::CRSGraph{GID, PID, LID}) where {
 
     computeLocalConstants(graph)
 
-    commObj = comm(map(graph))
+    commObj = getComm(getRowMap(graph))
 
     #if graph.haveGlobalConstants == false  #short circuited above
     graph.globalNumEntries, graph.globalNumDiags = sumAll(commObj,
@@ -544,7 +544,7 @@ end
 function globalAssemble(graph::CRSGraph)
     @assert isFillActive(graph) "Fill must be active before calling globalAssemble(graph)"
 
-    comm = JuliaPetra.comm(graph)
+    comm = getComm(graph)
     myNumNonlocalRows = length(graph.nonlocals)
 
     maxNonlocalRows = maxAll(comm, myNumNonlocalRows)
@@ -782,7 +782,7 @@ function insertGlobalIndicesImpl(graph::CRSGraph{GID, PID, LID},
         @assert numNewToInsert >= 0 "More duplications than indices"
 
         if rowInfo.numEntries + numNewToInsert > rowInfo.allocSize
-            throw(InvalidArgumentError("$(myPid(comm(graph))): "
+            throw(InvalidArgumentError("$(myPid(getComm(graph))): "
                     * "For local row $myRow, even after excluding "
                     * "$dupCount duplicate(s) in input, the new number "
                     * "of entries $(rowInfo.numEntries + numNewToInsert) "
@@ -851,7 +851,7 @@ function __makeColMap(graph::CRSGraph{GID, PID, LID}, wrappedDomMap::Nullable{Bl
         wrappedColMap = graph.colMap
 
         if isnull(wrappedColMap)
-            warn("$(myPid(comm(graph))): The graph is locally indexed, but does not have a column map")
+            warn("$(myPid(getComm(graph))): The graph is locally indexed, but does not have a column map")
 
             error = true
             myColumns = GID[]
@@ -866,7 +866,7 @@ function __makeColMap(graph::CRSGraph{GID, PID, LID}, wrappedDomMap::Nullable{Bl
                 myColumns = copy(myGlobalElements(colMap))
             end
         end
-        return (error, BlockMap(myColumns, comm(domMap)))
+        return (error, BlockMap(myColumns, getComm(domMap)))
     end
 
     #else if graph.isGloballyIndexed
@@ -906,7 +906,7 @@ function __makeColMap(graph::CRSGraph{GID, PID, LID}, wrappedDomMap::Nullable{Bl
     numRemoteColGIDs = length(remoteGIDSet)
 
     #line 214, abunch of explanation of serial short circuit
-    if numProc(comm(domMap)) == 1
+    if numProc(getComm(domMap)) == 1
         if numRemoteColGIDs != 0
             error = true
         end
@@ -968,7 +968,7 @@ function __makeColMap(graph::CRSGraph{GID, PID, LID}, wrappedDomMap::Nullable{Bl
 
         if numLocalCount != numLocalColGIDs
             if @debug
-                warn("$(myPid(comm(graph))): numLocalCount = $numLocalCount "
+                warn("$(myPid(getComm(graph))): numLocalCount = $numLocalCount "
                     * "!= numLocalColGIDs = $numLocalColGIDs.  "
                     * "This should not happen.")
             end
@@ -976,5 +976,5 @@ function __makeColMap(graph::CRSGraph{GID, PID, LID}, wrappedDomMap::Nullable{Bl
         end
     end
 
-    return (error, BlockMap(myColumns, comm(domMap)))
+    return (error, BlockMap(myColumns, getComm(domMap)))
 end

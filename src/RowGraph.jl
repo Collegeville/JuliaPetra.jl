@@ -162,7 +162,7 @@ isLocallyIndexed(graph::RowGraph) = !isGloballyIndexed(graph)
 
 
 #### SrcDistObject methods ####
-map(graph::RowGraph) = getRowMap(graph)
+getMap(graph::RowGraph) = getRowMap(graph)
 
 
 #### documentation for required methods ####

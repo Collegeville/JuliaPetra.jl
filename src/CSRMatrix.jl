@@ -267,7 +267,7 @@ computeGlobalConstants(matrix::CSRMatrix) = nothing
 clearGlobalConstants(matrix::CSRMatrix) = nothing
 
 function globalAssemble(matrix::CSRMatrix)
-    comm = JuliaPetra.comm(matrix)
+    comm = getComm(matrix)
     if !isFillActive(matrix)
         throw(InvalidStateError("Fill must be active to call this method"))
     end
@@ -667,7 +667,7 @@ function fillComplete(matrix::CSRMatrix{Data, GID, PID, LID},
     assertNoNonlocalInserts = get(plist, :noNonlocalChanges, false)
     #skipping sort ghosts stuff
 
-    numProcs = numProc(comm(matrix))
+    numProcs = numProc(getComm(matrix))
 
     needGlobalAssemble = !assertNoNonlocalInserts && numProcs > 1
     if needGlobalAssemble
@@ -1064,7 +1064,7 @@ function applyNonTranspose!(Y::MultiVector{Data, GID, PID, LID}, operator::CSRMa
     exporter = getGraph(operator).exporter
 
     #assumed to be shared by all data structures
-    resultComm = comm(Y)
+    resultComm = getComm(Y)
 
     YIsOverwritten = (beta == ZERO)
     YIsReplicated = !distributedGlobal(Y) && numProc(resultComm) != 0
@@ -1128,7 +1128,7 @@ function applyTranspose!(Yin::MultiVector{Data, GID, PID, LID}, operator::CSRMat
 
     YIsReplicated = distributedGlobal(Yin)
     YIsOverwritted = (beta == ZERO)
-    if YIsReplicated && myPID(comm(operator)) != 1
+    if YIsReplicated && myPID(getComm(operator)) != 1
         beta = ZERO
     end
 

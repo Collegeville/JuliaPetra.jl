@@ -105,6 +105,11 @@ function map(vect::MultiVector{Data, GID, PID, LID})::BlockMap{GID, PID, LID} wh
 end
 
 
+ function Base.scale!(vect::MultiVector, alpha::Number)
+    scale!(vect.data, alpha)
+    vect
+ end
+
 """
     scale(::MultiVector{Data, GID, PID, LID}, ::Number)::MultiVector{Data, GID, PID, LID}
 
@@ -114,16 +119,12 @@ function scale(vect::MultiVector, alpha::Number)
     scale!(copy(vect), alpha)
 end
 
-"""
-     scale!(::MultiVector{Data, GID, PID, LID}, ::AbstractArray{<:Number, 1})::MultiVector{Data, GID, PID, LID}
 
- Scales each column of the mulitvector in place and returns it
- """
  function Base.scale!(vect::MultiVector, alpha::AbstractArray{<:Number, 1})
-     for v = 1:vect.numVectors
+    for v = 1:vect.numVectors
         @inbounds vect.data[:, v] *= alpha[v]
-     end
-     vect
+    end
+    vect
  end
 
 """
@@ -295,7 +296,7 @@ end
 
 Base.size(A::MultiVector) = (Int(A.globalLength), Int(A.numVectors))
 
-#TODO this might break for funky maps
+#TODO this might break for funky maps, however indices needs to return a unit range
 Base.indices(A::MultiVector) = (minMyGID(A.map):maxMyGID(A.map), 1:A.numVectors)
 
 function Base.getindex(A::MultiVector, row::Integer, col::Integer)

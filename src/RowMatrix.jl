@@ -368,6 +368,13 @@ function rightScale! end
 ### Julia Array functions ###
 Base.size(mat::RowMatrix) = (getGlobalNumRows(mat), getGlobalNumCols(mat))
 
+#TODO this might break for funky maps, however indices needs to return a unit range
+Base.indices(A::RowMatrix{GID}) where GID = if hasColMap(A)
+        (minMyGID(rowMap(A)):maxMyGID(rowMap(A)), minMyGID(getColMap(A)):maxMyGID(getColMap(A)))
+    else
+        (minMyGID(rowMap(A)):maxMyGID(rowMap(A)), GID(1):getGlobalNumCols(A))
+    end
+
 function Base.getindex(A::RowMatrix, I::Vararg{Int, 2})
     if isGloballyIndexed(A)
         @boundscheck begin

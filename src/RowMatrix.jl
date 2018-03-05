@@ -95,6 +95,7 @@ Whether the matrix is upper triangular
 abstract type RowMatrix{Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer} <: AbstractArray{Data, 2}
 end
 
+#REVIEW look into requiring A_mul_B! instead and having apply! call that
 
 
 function leftScale!(matrix::RowMatrix{Data, GID, PID, LID}, X::MultiVector{Data, GID, PID, LID}) where {

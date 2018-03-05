@@ -160,7 +160,7 @@ function Base.dot(vect1::MultiVector{Data, GID, PID, LID}, vect2::MultiVector{Da
         dotProducts[vect] = sum
     end
 
-    dotProducts = sumAll(getComm(vect1), dotProducts)
+    dotProducts = sumAll(getComm(vect1), dotProducts)::Vector{Data}
 
     dotProducts
 end
@@ -193,13 +193,13 @@ end
 
 Reduces the content of the MultiVector across all processes.  Note that the MultiVector cannot be distributed globally.
 """
-function commReduce(mVect::MultiVector)
+function commReduce(mVect::MultiVector{Data}) where Data
     #can only reduce locally replicated mutlivectors
     if distributedGlobal(mVect)
         throw(InvalidArgumentError("Cannot reduce distributed MultiVector"))
     end
 
-    mVect.data = sumAll(getComm(mVect), mVect.data)
+    mVect.data = sumAll(getComm(mVect), mVect.data)::Matrix{Data}
 end
 
 #TODO implement this as Base.norm(vect, n)
@@ -226,7 +226,7 @@ macro normImpl(mVect, Data, normType)
             norms[i] = sum
         end
 
-        norms = sumAll(getComm(getMap($(esc(mVect)))), norms)
+        norms = sumAll(getComm(getMap($(esc(mVect)))), norms)::Vector{$(esc(Data))}
 
         $(if normType == 2
             :(@. norms = sqrt(norms))

@@ -191,7 +191,8 @@ end
 """
     commReduce(::MultiVector)
 
-Reduces the content of the MultiVector across all processes.  Note that the MultiVector cannot be distributed globally.
+Elementwise reduces the content of the MultiVector across all processes.
+Note that the MultiVector cannot be distributed globally.
 """
 function commReduce(mVect::MultiVector{Data}) where Data
     #can only reduce locally replicated mutlivectors

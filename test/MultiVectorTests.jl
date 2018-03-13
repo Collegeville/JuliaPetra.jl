@@ -93,7 +93,7 @@ function multiVectorTests(comm::Comm{UInt64, UInt16, UInt32})
     @test 8*ones(Float64, (n, 3)) == vect.data
 
 
-    #test reduce
+    #test comm reduce
     arr = (10^pid)*ones(Float64, n, 3)
     vect = MultiVector(BlockMap(n, n, comm), arr)
     commReduce(vect)

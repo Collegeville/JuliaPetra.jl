@@ -2,12 +2,7 @@ export apply!, apply
 
 
 """
-Operator is a description of all types that have a specific set of methods.  ``@operatorFunctions typ`` must be called
-for Operator type ``typ``.  Operators must have 4 parametric types:
-    Data - the type of the data
-    GID  - the type of the global indexes
-    PID  - the type of the processor ranks
-    LID  - the type of the local indexes
+Operator is a description of all types that have a specific set of methods.
 
 All Operator types must implement the following methods (with Op standing in for the Operator):
 
@@ -22,7 +17,6 @@ getDomainMap(operator::Op{Data, GID, PID, LID})::BlockMap{GID, PID, LID}
 
 getRangeMap(operator::Op{Data, GID, PID, LID})::BlockMap{GID, PID, LID}
     Returns the BlockMap associated with the range of this operation
-The field operators contains all types that have had ``@operatorFunctions`` called on them
 """
 const Operator = Any #allow Operator to be documented
 

@@ -4,27 +4,27 @@ export insertLocalIndices, insertGlobalIndices
 
 #### RowGraph methods ####
 
-getRowMap(graph::CRSGraph) = graph.rowMap
-getColMap(graph::CRSGraph) = get(graph.colMap)
-getDomainMap(graph::CRSGraph) = get(graph.domainMap)
-getRangeMap(graph::CRSGraph) = get(graph.rangeMap)
-getImporter(graph::CRSGraph) = get(graph.importer)
-getExporter(graph::CRSGraph) = get(graph.exporter)
+getRowMap(graph::CSRGraph) = graph.rowMap
+getColMap(graph::CSRGraph) = get(graph.colMap)
+getDomainMap(graph::CSRGraph) = get(graph.domainMap)
+getRangeMap(graph::CSRGraph) = get(graph.rangeMap)
+getImporter(graph::CSRGraph) = get(graph.importer)
+getExporter(graph::CSRGraph) = get(graph.exporter)
 
-getGlobalNumRows(graph::CRSGraph) = numGlobalElements(getRowMap(graph))
-getGlobalNumCols(graph::CRSGraph) = numGlobalElements(getColMap(graph))
-getLocalNumRows(graph::CRSGraph) = numMyElements(getRowMap(graph))
-getLocalNumCols(graph::CRSGraph) = numMyElements(getColMap(graph))
+getGlobalNumRows(graph::CSRGraph) = numGlobalElements(getRowMap(graph))
+getGlobalNumCols(graph::CSRGraph) = numGlobalElements(getColMap(graph))
+getLocalNumRows(graph::CSRGraph) = numMyElements(getRowMap(graph))
+getLocalNumCols(graph::CSRGraph) = numMyElements(getColMap(graph))
 
-getGlobalNumEntries(graph::CRSGraph) = graph.globalNumEntries
-getLocalNumEntries(graph::CRSGraph) = graph.nodeNumEntries
+getGlobalNumEntries(graph::CSRGraph) = graph.globalNumEntries
+getLocalNumEntries(graph::CSRGraph) = graph.nodeNumEntries
 
-function getNumEntriesInGlobalRow(graph::CRSGraph{GID}, globalRow::Integer)::Integer where {GID <: Integer}
+function getNumEntriesInGlobalRow(graph::CSRGraph{GID}, globalRow::Integer)::Integer where {GID <: Integer}
     localRow = lid(graph.rowMap, GID(globalRow))
     getNumEntriesInLocalRow(graph, localRow)
 end
 
-function getNumEntriesInLocalRow(graph::CRSGraph{GID, PID, LID}, localRow::Integer)::Integer where {GID, PID, LID <: Integer}
+function getNumEntriesInLocalRow(graph::CSRGraph{GID, PID, LID}, localRow::Integer)::Integer where {GID, PID, LID <: Integer}
     if hasRowInfo(graph) && myLID(graph.rowMap, LID(localRow))
         info = getRowInfo(graph, LID(localRow))
         retVal = info.numEntries
@@ -35,31 +35,31 @@ function getNumEntriesInLocalRow(graph::CRSGraph{GID, PID, LID}, localRow::Integ
     end
 end
 
-getGlobalNumDiags(graph::CRSGraph) = graph.globalNumDiags
-getLocalNumDiags(graph::CRSGraph) = graph.nodeNumDiags
+getGlobalNumDiags(graph::CSRGraph) = graph.globalNumDiags
+getLocalNumDiags(graph::CSRGraph) = graph.nodeNumDiags
 
-getGlobalMaxNumRowEntries(graph::CRSGraph) = graph.globalMaxNumRowEntries
-getLocalMaxNumRowEntries(graph::CRSGraph) = graph.nodeMaxNumRowEntries
+getGlobalMaxNumRowEntries(graph::CSRGraph) = graph.globalMaxNumRowEntries
+getLocalMaxNumRowEntries(graph::CSRGraph) = graph.nodeMaxNumRowEntries
 
-hasColMap(graph::CRSGraph) = !isnull(graph.colMap)
+hasColMap(graph::CSRGraph) = !isnull(graph.colMap)
 
-isLowerTriangular(graph::CRSGraph) = graph.lowerTriangle
-isUpperTriangular(graph::CRSGraph) = graph.upperTriangle
+isLowerTriangular(graph::CSRGraph) = graph.lowerTriangle
+isUpperTriangular(graph::CSRGraph) = graph.upperTriangle
 
-isGloballyIndexed(graph::CRSGraph) = graph.indicesType == GLOBAL_INDICES
-isLocallyIndexed(graph::CRSGraph) = graph.indicesType == LOCAL_INDICES
+isGloballyIndexed(graph::CSRGraph) = graph.indicesType == GLOBAL_INDICES
+isLocallyIndexed(graph::CSRGraph) = graph.indicesType == LOCAL_INDICES
 
-isFillComplete(g::CRSGraph) = g.fillComplete
+isFillComplete(g::CSRGraph) = g.fillComplete
 
-function getGlobalRowCopy(graph::CRSGraph{GID}, globalRow::GID)::Array{GID, 1} where {GID <: Integer}
+function getGlobalRowCopy(graph::CSRGraph{GID}, globalRow::GID)::Array{GID, 1} where {GID <: Integer}
     Array{GID, 1}(getGlobalRowView(graph, globalRow))
 end
 
-function getLocalRowCopy(graph::CRSGraph{GID, PID, LID}, localRow::LID)::Array{LID, 1} where {GID, PID, LID <: Integer}
+function getLocalRowCopy(graph::CSRGraph{GID, PID, LID}, localRow::LID)::Array{LID, 1} where {GID, PID, LID <: Integer}
     Array{LID, 1}(getLocalRowView(graph, localRow))
 end
 
-function pack(source::CRSGraph{GID, PID, LID}, exportLIDs::AbstractArray{LID, 1}, distor::Distributor{GID, PID, LID})::Array{Array{LID, 1}, 1} where {GID, PID, LID}
+function pack(source::CSRGraph{GID, PID, LID}, exportLIDs::AbstractArray{LID, 1}, distor::Distributor{GID, PID, LID})::Array{Array{LID, 1}, 1} where {GID, PID, LID}
     srcMap = getMap(source)
     [getGlobalRowCopy(source, gid(srcMap, lid)) for lid in exportLIDs]
 end
@@ -67,21 +67,21 @@ end
 
 #### DistObject methods ####
 function checkSizes(source::RowGraph{GID, PID, LID},
-        target::CRSGraph{GID, PID, LID}) where {GID, PID, LID}
+        target::CSRGraph{GID, PID, LID}) where {GID, PID, LID}
     #T and E petra's don't do any checks
     true
 end
 
 function copyAndPermute(source::RowGraph{GID, PID, LID},
-        target::CRSGraph{GID, PID, LID}, numSameIDs::LID,
+        target::CSRGraph{GID, PID, LID}, numSameIDs::LID,
         permuteToLIDs::AbstractArray{LID, 1}, permuteFromLIDs::AbstractArray{LID, 1}) where {
         GID, PID, LID}
     copyAndPermuteNoViewMode(source, target,
         numSameIDs, permuteToLIDs, permuteFromLIDs)
 end
 
-function copyAndPermute(source::CRSGraph{GID, PID, LID},
-        target::CRSGraph{GID, PID, LID}, numSameIDs::LID,
+function copyAndPermute(source::CSRGraph{GID, PID, LID},
+        target::CSRGraph{GID, PID, LID}, numSameIDs::LID,
         permuteToLIDs::AbstractArray{LID, 1}, permuteFromLIDs::AbstractArray{LID, 1}) where {
         GID, PID, LID}
     if isFillComplete(target)
@@ -118,7 +118,7 @@ end
 
 
 function copyAndPermuteNoViewMode(source::RowGraph{GID, PID, LID},
-        target::CRSGraph{GID, PID, LID}, numSameIDs::LID,
+        target::CSRGraph{GID, PID, LID}, numSameIDs::LID,
         permuteToLIDs::AbstractArray{LID, 1}, permuteFromLIDs::AbstractArray{LID, 1}) where {
         GID, PID, LID}
     if length(permuteToLIDs) != length(premuteFromLIDs)
@@ -148,14 +148,14 @@ end
 
 
 function packAndPrepare(source::RowGraph{GID, PID, LID},
-        target::CRSGraph{GID, PID, LID}, exportLIDs::AbstractArray{LID, 1},
+        target::CSRGraph{GID, PID, LID}, exportLIDs::AbstractArray{LID, 1},
         distor::Distributor{GID, PID, LID})::Array{GID, 1} where {
         GID, PID, LID}
 
     pack(source, exportLIDs, distor)
 end
 
-function unpackAndCombine(target::CRSGraph{GID, PID, LID},
+function unpackAndCombine(target::CSRGraph{GID, PID, LID},
         importLIDs::AbstractArray{LID, 1}, imports::AbstractArray,
         distor::Distributor{GID, PID, LID}, cm::CombineMode) where {
         GID, PID, LID}
@@ -173,31 +173,31 @@ end
 
 
 
-#### CRSGraph methods ####
-#TODO document the CRSGraph methods
+#### CSRGraph methods ####
+#TODO document the CSRGraph methods
 
 """
-    insertLocalIndices(::CRSGraph{GID, PID, LID}, localRow::Integer, [numEntries::Integer,] inds::AbstractArray{<: Integer, 1})
+    insertLocalIndices(::CSRGraph{GID, PID, LID}, localRow::Integer, [numEntries::Integer,] inds::AbstractArray{<: Integer, 1})
 
 Inserts the given local indices into the graph.  If `numEntries` is given,
 only the first `numEntries` elements are inserted
 """
-function insertLocalIndices(graph::CRSGraph{GID, PID, LID}, localRow::Integer,
+function insertLocalIndices(graph::CSRGraph{GID, PID, LID}, localRow::Integer,
         numEntries::Integer, inds::AbstractArray{<:Integer, 1}) where {GID, PID, LID <: Integer}
     insertLocalIndices(graph, LID(localRow), LID(numEntries), Array{LID, 1}(inds))
 end
-function insertLocalIndices(graph::CRSGraph{GID, PID, LID}, localRow::LID,
+function insertLocalIndices(graph::CSRGraph{GID, PID, LID}, localRow::LID,
         numEntries::LID, inds::AbstractArray{LID, 1}) where {
         GID, PID, LID <: Integer}
     indicesView = view(inds, 1:numEntries)
     insertLocalIndices(graph, localRow, indsT)
 end
 
-function insertLocalIndices(graph::CRSGraph{GID, PID, LID}, localRow::Integer,
+function insertLocalIndices(graph::CSRGraph{GID, PID, LID}, localRow::Integer,
         inds::AbstractArray{<:Integer, 1}) where {GID, PID, LID <: Integer}
     insertLocalIndices(graph, LID(localRow), Array{LID, 1}(inds))
 end
-function insertLocalIndices(graph::CRSGraph{GID, PID, LID},
+function insertLocalIndices(graph::CSRGraph{GID, PID, LID},
         localRow::LID, indices::AbstractArray{LID, 1}) where{
         GID, PID, LID <: Integer}
     if !isFillActive(graph)
@@ -242,27 +242,27 @@ end
 
 
 """
-    insertGlobalIndices(::CRSGraph{GID, PID, LID}, localRow::Integer, [numEntries::Integer,] inds::AbstractArray{<: Integer, 1})
+    insertGlobalIndices(::CSRGraph{GID, PID, LID}, localRow::Integer, [numEntries::Integer,] inds::AbstractArray{<: Integer, 1})
 
 Inserts the given global indices into the graph.  If `numEntries` is given,
 only the first `numEntries` elements are inserted
 """
-function insertGlobalIndices(graph::CRSGraph{GID, PID, LID}, globalRow::Integer,
+function insertGlobalIndices(graph::CSRGraph{GID, PID, LID}, globalRow::Integer,
         numEntries::Integer, inds::AbstractArray{<: Integer, 1}) where {
         GID <: Integer, PID, LID <: Integer}
     insertGlobalIndices(graph, GID(globalRow), LID(numEntries), Array{GID, 1}(inds))
 end
-function insertGlobalIndices(graph::CRSGraph{GID, PID, LID}, globalRow::GID,
+function insertGlobalIndices(graph::CSRGraph{GID, PID, LID}, globalRow::GID,
         numEntries::LID, inds::AbstractArray{GID, 1}) where {
         GID <: Integer, PID, LID <: Integer}
     indicesView = view(inds, 1:numEntries)
     insertGlobalIndices(graph, globalRow, indsT)
 end
-function insertGlobalIndices(graph::CRSGraph{GID, PID, LID}, globalRow::Integer,
+function insertGlobalIndices(graph::CSRGraph{GID, PID, LID}, globalRow::Integer,
         inds::AbstractArray{<: Integer, 1}) where {GID <: Integer, PID, LID <: Integer}
     insertGlobalIndices(graph, GID(globalRow), Array{GID, 1}(inds))
 end
-function insertGlobalIndices(graph::CRSGraph{GID, PID, LID}, globalRow::GID,
+function insertGlobalIndices(graph::CSRGraph{GID, PID, LID}, globalRow::GID,
         indices::AbstractArray{GID, 1}) where {GID <: Integer, PID, LID <: Integer}
     if isLocallyIndexed(graph)
         throw(InvalidStateError("Graph indices are local, use insertLocalIndices()"))
@@ -303,12 +303,12 @@ function insertGlobalIndices(graph::CRSGraph{GID, PID, LID}, globalRow::GID,
 end
 
 """
-    insertGlobalIndicesFiltered(::CRSGraph{GID, PID, LID}, localRow::Integer, inds::AbstractArray{<: Integer, 1})
+    insertGlobalIndicesFiltered(::CSRGraph{GID, PID, LID}, localRow::Integer, inds::AbstractArray{<: Integer, 1})
 
 As `insertGlobalIndices(...)` but filters by those present in
 the column map, if present
 """
-function insertGlobalIndicesFiltered(graph::CRSGraph{GID, PID, LID}, globalRow::GID,
+function insertGlobalIndicesFiltered(graph::CSRGraph{GID, PID, LID}, globalRow::GID,
         indices::AbstractArray{GID, 1}) where{GID, PID, LID}
     if isLocallyIndexed(graph)
         throw(InvalidStateError(
@@ -335,7 +335,7 @@ function insertGlobalIndicesFiltered(graph::CRSGraph{GID, PID, LID}, globalRow::
     end
 end
 
-function getGlobalView(graph::CRSGraph{GID, PID, LID}, rowInfo::RowInfo{LID}) where {GID <: Integer, PID, LID <: Integer}
+function getGlobalView(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo{LID}) where {GID <: Integer, PID, LID <: Integer}
     if rowInfo.allocSize > 0
         if length(graph.globalIndices1D) != 0
             range = rowInfo.offset1D : rowInfo.offset1D + rowInfo.allocSize
@@ -350,7 +350,7 @@ function getGlobalView(graph::CRSGraph{GID, PID, LID}, rowInfo::RowInfo{LID}) wh
     end
 end
 
-@inline function getGlobalViewPtr(graph::CRSGraph{GID, PID, LID}, rowInfo::RowInfo{LID})::Tuple{Ptr{GID}, LID} where {GID <: Integer, PID, LID <: Integer}
+@inline function getGlobalViewPtr(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo{LID})::Tuple{Ptr{GID}, LID} where {GID <: Integer, PID, LID <: Integer}
     if rowInfo.allocSize > 0
         if length(graph.globalIndices1D) != 0
             return (pointer(graph.globalIndices1D, rowInfo.offset1D), rowInfo.allocSize)
@@ -362,7 +362,7 @@ end
     return (Ptr{GID}(C_NULL), 0)
 end
 
-function getLocalView(graph::CRSGraph{GID, PID, LID}, rowInfo::RowInfo{LID}) where {GID <: Integer, PID, LID <: Integer}
+function getLocalView(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo{LID}) where {GID <: Integer, PID, LID <: Integer}
     if rowInfo.allocSize > 0
         if length(graph.localIndices1D) != 0
             range = rowInfo.offset1D : rowInfo.offset1D + rowInfo.allocSize-LID(1)
@@ -376,7 +376,7 @@ function getLocalView(graph::CRSGraph{GID, PID, LID}, rowInfo::RowInfo{LID}) whe
 end
 
 
-Base.@propagate_inbounds @inline function getLocalViewPtr(graph::CRSGraph{GID, PID, LID}, rowInfo::RowInfo{LID})::Tuple{Ptr{LID}, LID} where {GID <: Integer, PID, LID <: Integer}
+Base.@propagate_inbounds @inline function getLocalViewPtr(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo{LID})::Tuple{Ptr{LID}, LID} where {GID <: Integer, PID, LID <: Integer}
     if rowInfo.allocSize > 0
         if length(graph.localIndices1D) != 0
             return (pointer(graph.localIndices1D, rowInfo.offset1D), rowInfo.allocSize)
@@ -388,9 +388,9 @@ Base.@propagate_inbounds @inline function getLocalViewPtr(graph::CRSGraph{GID, P
     return (C_NULL, 0)
 end
 
-function getGlobalRowView(graph::CRSGraph{GID}, globalRow::GID)::AbstractArray{GID, 1} where {GID <: Integer}
+function getGlobalRowView(graph::CSRGraph{GID}, globalRow::GID)::AbstractArray{GID, 1} where {GID <: Integer}
     if isLocallyIndexed(graph)
-        throw(InvalidArgumentError("The graph's indices are currently stored as local indices, so a view with global column indices cannot be returned.  Use getGlobalRowCopy(::CRSGraph) instead"))
+        throw(InvalidArgumentError("The graph's indices are currently stored as local indices, so a view with global column indices cannot be returned.  Use getGlobalRowCopy(::CSRGraph) instead"))
     end
 
     if @debug
@@ -407,9 +407,9 @@ function getGlobalRowView(graph::CRSGraph{GID}, globalRow::GID)::AbstractArray{G
     retVal
 end
 
-Base.@propagate_inbounds function getGlobalRowViewPtr(graph::CRSGraph{GID, PID, LID}, globalRow::GID)::Tuple{Ptr{GID}, LID} where {GID <: Integer, PID <: Integer, LID <: Integer}
+Base.@propagate_inbounds function getGlobalRowViewPtr(graph::CSRGraph{GID, PID, LID}, globalRow::GID)::Tuple{Ptr{GID}, LID} where {GID <: Integer, PID <: Integer, LID <: Integer}
     if isLocallyIndexed(graph)
-        throw(InvalidArgumentError("The graph's indices are currently stored as local indices, so a view with global column indices cannot be returned.  Use getGlobalRowCopy(::CRSGraph) instead"))
+        throw(InvalidArgumentError("The graph's indices are currently stored as local indices, so a view with global column indices cannot be returned.  Use getGlobalRowCopy(::CSRGraph) instead"))
     end
 
     if @debug
@@ -429,7 +429,7 @@ Base.@propagate_inbounds function getGlobalRowViewPtr(graph::CRSGraph{GID, PID, 
     retVal
 end
 
-function getLocalRowView(graph::CRSGraph{GID}, localRow::GID)::AbstractArray{GID, 1} where {GID}
+function getLocalRowView(graph::CSRGraph{GID}, localRow::GID)::AbstractArray{GID, 1} where {GID}
     if @debug
         @assert hasRowInfo() "Graph row information was deleted"
     end
@@ -440,11 +440,11 @@ function getLocalRowView(graph::CRSGraph{GID}, localRow::GID)::AbstractArray{GID
     retVal
 end
 
-function getLocalRowView(graph::CRSGraph{GID, PID, LID}, rowInfo::RowInfo{LID}
+function getLocalRowView(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo{LID}
         )::AbstractArray{GID, 1} where {GID, PID, LID}
 
     if isGloballyIndexed(graph)
-        throw(InvalidArgumentError("The graph's indices are currently stored as global indices, so a view with local column indices cannot be returned.  Use getLocalRowCopy(::CRSGraph) instead"))
+        throw(InvalidArgumentError("The graph's indices are currently stored as global indices, so a view with local column indices cannot be returned.  Use getLocalRowCopy(::CSRGraph) instead"))
     end
 
     if rowInfo.localRow != 0 && rowInfo.numEntries > 0
@@ -462,11 +462,11 @@ function getLocalRowView(graph::CRSGraph{GID, PID, LID}, rowInfo::RowInfo{LID}
     end
 end
 
-resumeFill(graph::CRSGraph; plist...) = resumeFill(graph, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
+resumeFill(graph::CSRGraph; plist...) = resumeFill(graph, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
 
-function resumeFill(graph::CRSGraph, plist::Dict{Symbol})
+function resumeFill(graph::CSRGraph, plist::Dict{Symbol})
     if !hasRowInfo(graph)
-        throw(InvalidStateError("Cannot resume fill of the CRSGraph, "
+        throw(InvalidStateError("Cannot resume fill of the CSRGraph, "
                 * "since the graph's row information was deleted."))
     end
 
@@ -484,9 +484,9 @@ function resumeFill(graph::CRSGraph, plist::Dict{Symbol})
 end
 
 
-fillComplete(graph::CRSGraph; plist...) = fillComplete(graph, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
+fillComplete(graph::CSRGraph; plist...) = fillComplete(graph, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
 
-function fillComplete(graph::CRSGraph, plist::Dict{Symbol})
+function fillComplete(graph::CSRGraph, plist::Dict{Symbol})
     if isnull(graph.domainMap)
         domMap = graph.rowMap
     else
@@ -502,13 +502,13 @@ function fillComplete(graph::CRSGraph, plist::Dict{Symbol})
     fillComplete(graph, ranMap, domMap, plist)
 end
 
-function fillComplete(graph::CRSGraph{GID, PID, LID},
+function fillComplete(graph::CSRGraph{GID, PID, LID},
         domainMap::BlockMap{GID, PID, LID}, rangeMap::BlockMap{GID, PID, LID};
         plist...) where {GID, PID, LID}
     fillComplete(graph, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
 end
 
-function fillComplete(graph::CRSGraph{GID, PID, LID}, domainMap::BlockMap{GID, PID, LID}, rangeMap::BlockMap{GID, PID, LID}, plist::Dict{Symbol}) where {GID, PID, LID}
+function fillComplete(graph::CSRGraph{GID, PID, LID}, domainMap::BlockMap{GID, PID, LID}, rangeMap::BlockMap{GID, PID, LID}, plist::Dict{Symbol}) where {GID, PID, LID}
     if !isFillActive(graph) || isFillComplete(graph)
         throw(InvalidStateError("Graph fill state must be active to call fillComplete(...)"))
     end
@@ -548,7 +548,7 @@ function fillComplete(graph::CRSGraph{GID, PID, LID}, domainMap::BlockMap{GID, P
     checkInternalState(graph)
 end
 
-function makeColMap(graph::CRSGraph{GID, PID, LID}) where {GID, PID, LID}
+function makeColMap(graph::CSRGraph{GID, PID, LID}) where {GID, PID, LID}
     const localNumRows = getLocalNumEntries(graph)
 
     #TODO look at FIXME on line 4898
@@ -570,25 +570,25 @@ function makeColMap(graph::CRSGraph{GID, PID, LID}) where {GID, PID, LID}
 end
 
 """
-    isSorted(::CRSGraph)
+    isSorted(::CSRGraph)
 
 Whether the indices are sorted
 """
-isSorted(graph::CRSGraph) = graph.indicesAreSorted
+isSorted(graph::CSRGraph) = graph.indicesAreSorted
 
 """
-    isMerged(::CRSGraph)
+    isMerged(::CSRGraph)
 
 Whether duplicate column indices in each row have been merged
 """
-isMerged(graph::CRSGraph) = graph.noRedundancies
+isMerged(graph::CSRGraph) = graph.noRedundancies
 
 """
-    setAllIndices(graph::CRSGraph{GID, PID, LID}, rowPointers::Array{LID, 1}, columnIndices::AbstractArray{LID, 1})
+    setAllIndices(graph::CSRGraph{GID, PID, LID}, rowPointers::Array{LID, 1}, columnIndices::AbstractArray{LID, 1})
 
 Sets the graph's data directly, using 1D storage
 """
-function setAllIndices(graph::CRSGraph{GID, PID, LID},
+function setAllIndices(graph::CSRGraph{GID, PID, LID},
         rowPointers::AbstractArray{LID, 1},columnIndices::Array{LID, 1}) where {
         GID, PID, LID <: Integer}
 
@@ -612,18 +612,18 @@ function setAllIndices(graph::CRSGraph{GID, PID, LID},
     graph.nodeNumEntries = localNumEntries
     graph.storageStatus  = STORAGE_1D_UNPACKED
 
-    graph.localGraph     = LocalCRSGraph(columnIndices, rowPointers)
+    graph.localGraph     = LocalCSRGraph(columnIndices, rowPointers)
 
     checkInternalState(graph)
 end
 
 
 """
-    isStorageOptimized(::CRSGraph)
+    isStorageOptimized(::CSRGraph)
 
 Whether the graph's storage is optimized
 """
-function isStorageOptimized(graph::CRSGraph)
+function isStorageOptimized(graph::CSRGraph)
     const isOpt = length(graph.numRowEntries) == 0 && getLocalNumRows(graph) > 0
     if (@debug) && isOpt
         @assert(getProfileType(graph) == STATIC_PROFILE,
@@ -634,8 +634,8 @@ function isStorageOptimized(graph::CRSGraph)
 end
 
 """
-    getProfileType(::CRSGraph)
+    getProfileType(::CSRGraph)
 
 Gets the profile type of the graph
 """
-getProfileType(graph::CRSGraph) = graph.pftype
+getProfileType(graph::CSRGraph) = graph.pftype

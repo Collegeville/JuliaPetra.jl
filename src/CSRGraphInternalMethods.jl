@@ -2,7 +2,7 @@
 
 #DECISION put this somewhere else?  Its only an internal grouping
 mutable struct RowInfo{LID <: Integer}
-    graph::CRSGraph{<:Integer, <:Integer, LID}
+    graph::CSRGraph{<:Integer, <:Integer, LID}
     localRow::LID
     allocSize::LID
     numEntries::LID
@@ -15,7 +15,7 @@ const rowInfoSpare = Union{Void, RowInfo}[nothing]
 """
     Gets a `RowInfo` object with the given values, reusing an intance if able
 """
-@inline function createRowInfo(graph::CRSGraph{<:Integer, <:Integer, LID}, localRow::LID,
+@inline function createRowInfo(graph::CSRGraph{<:Integer, <:Integer, LID}, localRow::LID,
         allocSize::LID, numEntries::LID, offset1D::LID)::RowInfo{LID} where {LID <: Integer}
     global rowInfoSpare
 
@@ -51,11 +51,11 @@ end
 end
 
 
-#TODO implement getLocalDiagOffsets(::CRSGraph)
-getLocalGraph(graph::CRSGraph) = graph.localGraph
+#TODO implement getLocalDiagOffsets(::CSRGraph)
+getLocalGraph(graph::CSRGraph) = graph.localGraph
 
 
-function updateGlobalAllocAndValues(graph::CRSGraph{GID, PID, LID}, rowInfo::RowInfo{LID}, newAllocSize::Integer, rowValues::AbstractArray{Data, 1}) where {Data, GID, PID, LID}
+function updateGlobalAllocAndValues(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo{LID}, newAllocSize::Integer, rowValues::AbstractArray{Data, 1}) where {Data, GID, PID, LID}
 
     resize!(graph.globalIndices2D[rowInfo.localRow], newAllocSize)
     resize!(rowVals, newAllocSize)
@@ -63,14 +63,14 @@ function updateGlobalAllocAndValues(graph::CRSGraph{GID, PID, LID}, rowInfo::Row
     nothing
 end
 
-function insertIndicesAndValues(graph::CRSGraph{GID, PID, LID}, rowInfo::RowInfo{LID}, newInds::Union{AbstractArray{GID, 1}, AbstractArray{LID, 1}}, oldRowVals::AbstractArray{Data, 1}, newRowVals::AbstractArray{Data, 1}, lg::IndexType) where {Data, GID, PID, LID}
+function insertIndicesAndValues(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo{LID}, newInds::Union{AbstractArray{GID, 1}, AbstractArray{LID, 1}}, oldRowVals::AbstractArray{Data, 1}, newRowVals::AbstractArray{Data, 1}, lg::IndexType) where {Data, GID, PID, LID}
     numNewInds = insertIndices(graph, rowInfo, newInds, lg)
     oldInd = rowInfo.numEntries+1
 
     oldRowVals[range(oldInd, 1, numNewInds)] = newRowVals[1:numNewInds]
 end
 
-function insertIndices(graph::CRSGraph{GID, PID, LID}, rowInfo::RowInfo{LID}, newInds::Union{AbstractArray{GID, 1}, AbstractArray{LID, 1}}, lg::IndexType) where {GID, PID, LID}
+function insertIndices(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo{LID}, newInds::Union{AbstractArray{GID, 1}, AbstractArray{LID, 1}}, lg::IndexType) where {GID, PID, LID}
     numNewInds = LID(length(newInds))
     if lg == GLOBAL_INDICES
         if isGloballyIndexed(graph)
@@ -109,7 +109,7 @@ function insertIndices(graph::CRSGraph{GID, PID, LID}, rowInfo::RowInfo{LID}, ne
 end
 
 
-function computeGlobalConstants(graph::CRSGraph{GID, PID, LID}) where {
+function computeGlobalConstants(graph::CSRGraph{GID, PID, LID}) where {
         GID <: Integer, PID <: Integer, LID <: Integer}
 
     #short circuit if already computed
@@ -131,7 +131,7 @@ function computeGlobalConstants(graph::CRSGraph{GID, PID, LID}) where {
     graph.haveGlobalConstants = true
 end
 
-function clearGlobalConstants(graph::CRSGraph)
+function clearGlobalConstants(graph::CSRGraph)
     graph.globalNumEntries = 0
     graph.globalNumDiags = 0
     graph.globalMaxNumRowEntries = 0
@@ -139,7 +139,7 @@ function clearGlobalConstants(graph::CRSGraph)
 end
 
 
-function computeLocalConstants(graph::CRSGraph{GID, PID, LID}) where {
+function computeLocalConstants(graph::CSRGraph{GID, PID, LID}) where {
         GID <: Integer, PID <: Integer, LID <: Integer}
 
     #short circuit if already computed
@@ -194,15 +194,15 @@ function computeLocalConstants(graph::CRSGraph{GID, PID, LID}) where {
 end
 
 
-hasRowInfo(graph::CRSGraph) = (getProfileType(graph) != STATIC_PROFILE
+hasRowInfo(graph::CSRGraph) = (getProfileType(graph) != STATIC_PROFILE
                                 || length(graph.rowOffsets) != 0)
 
-Base.@propagate_inbounds function getRowInfoFromGlobalRow(graph::CRSGraph{GID, PID, LID},
+Base.@propagate_inbounds function getRowInfoFromGlobalRow(graph::CSRGraph{GID, PID, LID},
         row::Integer)::RowInfo{LID} where {GID, PID, LID <: Integer}
     getRowInfo(graph, lid(graph.rowMap, row))
 end
 
-@inline function getRowInfo(graph::CRSGraph{GID, PID, LID}, row::LID)::RowInfo{LID} where {GID, PID, LID <: Integer}
+@inline function getRowInfo(graph::CSRGraph{GID, PID, LID}, row::LID)::RowInfo{LID} where {GID, PID, LID <: Integer}
     if @debug
         @assert hasRowInfo(graph) "Graph does not have row info anymore.  Should have been caught earlier"
     end
@@ -252,7 +252,7 @@ function getLocalView(rowInfo::RowInfo{LID})::AbstractArray{LID, 1} where LID <:
     end
 end
 
-function allocateIndices(graph::CRSGraph{GID, <:Integer, LID},
+function allocateIndices(graph::CSRGraph{GID, <:Integer, LID},
         lg::IndexType, numAllocPerRow::AbstractArray{<:Integer, 1}) where {
         GID <: Integer, LID <: Integer}
     numRows = getLocalNumRows(graph)
@@ -262,13 +262,13 @@ function allocateIndices(graph::CRSGraph{GID, <:Integer, LID},
     allocateIndices(graph, lg, numAllocPerRow, i -> numAllocPerRow[i])
 end
 
-function allocateIndices(graph::CRSGraph{GID, <:Integer, LID},
+function allocateIndices(graph::CSRGraph{GID, <:Integer, LID},
         lg::IndexType, numAllocPerRow::Integer) where {
         GID <: Integer, LID <: Integer}
     allocateIndices(graph, lg, numAllocPerRow, i-> numAllocPerRow)
 end
 
-function allocateIndices(graph::CRSGraph{GID, <:Integer, LID},
+function allocateIndices(graph::CSRGraph{GID, <:Integer, LID},
         lg::IndexType, numAlloc, numAllocPerRow::Function) where {
         GID <: Integer, LID <: Integer}
 
@@ -320,7 +320,7 @@ function allocateIndices(graph::CRSGraph{GID, <:Integer, LID},
 end
 
 
-function makeImportExport(graph::CRSGraph{GID, PID, LID}) where {
+function makeImportExport(graph::CSRGraph{GID, PID, LID}) where {
         GID <: Integer, PID <: Integer, LID <: Integer}
     @assert !isnull(graph.colMap) "Cannot make imports and exports without a column map"
 
@@ -338,7 +338,7 @@ function makeImportExport(graph::CRSGraph{GID, PID, LID}) where {
 end
 
 #TODO migrate this to testing
-function checkInternalState(graph::CRSGraph)
+function checkInternalState(graph::CSRGraph)
     if @debug
         const localNumRows = getLocalNumRows(graph)
 
@@ -480,13 +480,13 @@ function checkInternalState(graph::CRSGraph)
     end
 end
 
-function setLocallyModified(graph::CRSGraph)
+function setLocallyModified(graph::CSRGraph)
     graph.indicesAreSorted = false
     graph.noRedundancies = false
     graph.haveLocalConstants = false
 end
 
-function sortAndMergeAllIndices(graph::CRSGraph, sorted::Bool, merged::Bool)
+function sortAndMergeAllIndices(graph::CSRGraph, sorted::Bool, merged::Bool)
     @assert(isLocallyIndexed(graph),
         "This method may only be called after makeIndicesLocal(graph)")
     @assert(merged || isStoragedOptimized(graph),
@@ -512,14 +512,14 @@ function sortAndMergeAllIndices(graph::CRSGraph, sorted::Bool, merged::Bool)
     end
 end
 
-function sortRowIndices(graph::CRSGraph{GID, PID, LID}, rowInfo::RowInfo{LID}) where {GID, PID, LID <: Integer}
+function sortRowIndices(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo{LID}) where {GID, PID, LID <: Integer}
     if rowInfo.numEntries > 0
         localColumnIndices = getLocalView(graph, rowInfo)
         sort!(localColumnIndices)
     end
 end
 
-function mergeRowIndices(graph::CRSGraph{GID, PID, LID}, rowInfo::RowInfo{LID}) where {GID, PID, LID <: Integer}
+function mergeRowIndices(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo{LID}) where {GID, PID, LID <: Integer}
     localColIndices = getLocalView(graph, rowInfo)
     localColIndices[:] = unique(localColIndices)
     mergedEntries = length(localColIndices)
@@ -529,7 +529,7 @@ function mergeRowIndices(graph::CRSGraph{GID, PID, LID}, rowInfo::RowInfo{LID}) 
 end
 
 
-function setDomainRangeMaps(graph::CRSGraph{GID, PID, LID}, domainMap::BlockMap{GID, PID, LID}, rangeMap::BlockMap{GID, PID, LID}) where {GID, PID, LID}
+function setDomainRangeMaps(graph::CSRGraph{GID, PID, LID}, domainMap::BlockMap{GID, PID, LID}, rangeMap::BlockMap{GID, PID, LID}) where {GID, PID, LID}
     if graph.domainMap != domainMap
         graph.domainMap = domainMap
         graph.importer = Nullable{Import{GID, PID, LID}}()
@@ -541,7 +541,7 @@ function setDomainRangeMaps(graph::CRSGraph{GID, PID, LID}, domainMap::BlockMap{
 end
 
 
-function globalAssemble(graph::CRSGraph)
+function globalAssemble(graph::CSRGraph)
     @assert isFillActive(graph) "Fill must be active before calling globalAssemble(graph)"
 
     comm = getComm(graph)
@@ -571,7 +571,7 @@ function globalAssemble(graph::CRSGraph)
 
     nonlocalRowMap = BlockMap(-1, myNonlocalGlobalRows, comm)
 
-    nonlocalGraph = CRSGraph(nonlocalRowMap, numEntPerNonlocalRow, STATIC_PROFILE)
+    nonlocalGraph = CSRGraph(nonlocalRowMap, numEntPerNonlocalRow, STATIC_PROFILE)
     for (i, (key, val)) = zip(1:length(graph.nonlocals), graph.nonlocals)
         globalRow = key
         globalColumns = val
@@ -589,7 +589,7 @@ function globalAssemble(graph::CRSGraph)
         oneToOneRowMap = createOneToOne(origRowMap)
         exportToOneToOne = Export(nonlocalRowMap, oneToOneRowMap)
 
-        oneToOneGraph = CRSGraph(oneToOneRowMap, 0)
+        oneToOneGraph = CSRGraph(oneToOneRowMap, 0)
         doExport(nonlocalGraph, oneToOneGraph, exportToOneToOne, INSERT)
 
         #keep memory highwater mark down
@@ -603,7 +603,7 @@ function globalAssemble(graph::CRSGraph)
     checkInternalState(graph)
 end
 
-function makeIndicesLocal(graph::CRSGraph{GID, PID, LID}) where {GID, PID, LID}
+function makeIndicesLocal(graph::CSRGraph{GID, PID, LID}) where {GID, PID, LID}
     @assert hasColMap(graph) "The graph does not have a column map yet.  This method should never be called in that case"
 
     colMap = get(graph.colMap)
@@ -658,7 +658,7 @@ function makeIndicesLocal(graph::CRSGraph{GID, PID, LID}) where {GID, PID, LID}
         end
     end
 
-    graph.localGraph = LocalCRSGraph(graph.localIndices1D, graph.rowOffsets)
+    graph.localGraph = LocalCSRGraph(graph.localIndices1D, graph.rowOffsets)
     graph.indicesType = LOCAL_INDICES
     checkInternalState(graph)
 end
@@ -732,7 +732,7 @@ macro insertIndicesImpl(indicesType, innards)
     end)
 end
 
-function insertLocalIndicesImpl(graph::CRSGraph{GID, PID, LID},
+function insertLocalIndicesImpl(graph::CSRGraph{GID, PID, LID},
         myRow::LID, indices::AbstractArray{LID, 1}) where {
         GID, PID, LID <: Integer}
     @insertIndicesImpl "local" begin
@@ -741,7 +741,7 @@ function insertLocalIndicesImpl(graph::CRSGraph{GID, PID, LID},
 end
 
 #TODO figure out if this all can be moved to @insertIndicesImpl
-function insertGlobalIndicesImpl(graph::CRSGraph{GID, PID, LID},
+function insertGlobalIndicesImpl(graph::CSRGraph{GID, PID, LID},
         myRow::LID, indices::AbstractArray{GID, 1}) where {
         GID <: Integer, PID, LID <: Integer}
     @insertIndicesImpl "global" begin
@@ -838,7 +838,7 @@ end
 
 #internal implementation of makeColMap, needed to handle some return and debuging stuff
 #returns Tuple(error, colMap)
-function __makeColMap(graph::CRSGraph{GID, PID, LID}, wrappedDomMap::Nullable{BlockMap{GID, PID, LID}}
+function __makeColMap(graph::CSRGraph{GID, PID, LID}, wrappedDomMap::Nullable{BlockMap{GID, PID, LID}}
         ) where {GID, PID, LID}
     error = false
 

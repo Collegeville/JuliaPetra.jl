@@ -50,10 +50,10 @@ include("TestUtil.jl")
             multiVectorTests(serialComm)
 
             include("SparseRowViewTests.jl")
-            include("LocalCRSGraphTests.jl")
+            include("LocalCSRGraphTests.jl")
             include("LocalCSRMatrixTests.jl")
 
-            include("CRSGraphTests.jl")
+            include("CSRGraphTests.jl")
             include("CSRMatrixTests.jl")
         end
     end

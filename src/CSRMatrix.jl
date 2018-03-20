@@ -10,7 +10,7 @@ mutable struct CSRMatrix{Data <: Number, GID <: Integer, PID <: Integer, LID <: 
     importMV::Nullable{MultiVector{Data, GID, PID, LID}}
     exportMV::Nullable{MultiVector{Data, GID, PID, LID}}
 
-    myGraph::CRSGraph{GID, PID, LID}
+    myGraph::CSRGraph{GID, PID, LID}
 
     localMatrix::LocalCSRMatrix{Data, LID}
 
@@ -25,7 +25,7 @@ mutable struct CSRMatrix{Data <: Number, GID <: Integer, PID <: Integer, LID <: 
 
     plist::Dict{Symbol}
 
-    function CSRMatrix{Data, GID, PID, LID}(rowMap::BlockMap{GID, PID, LID}, colMap::Nullable{BlockMap{GID, PID, LID}}, myGraph::CRSGraph{GID, PID, LID}, localMatrix::LocalCSRMatrix{Data, LID}, plist::Dict{Symbol}) where {Data, GID, PID, LID}
+    function CSRMatrix{Data, GID, PID, LID}(rowMap::BlockMap{GID, PID, LID}, colMap::Nullable{BlockMap{GID, PID, LID}}, myGraph::CSRGraph{GID, PID, LID}, localMatrix::LocalCSRMatrix{Data, LID}, plist::Dict{Symbol}) where {Data, GID, PID, LID}
 
         #allocate values
         localNumRows = getLocalNumRows(myGraph)
@@ -100,7 +100,7 @@ function CSRMatrix{Data}(rowMap::BlockMap{GID, PID, LID},
         colMap::Nullable{BlockMap{GID, PID, LID}},
         maxNumEntriesPerRow::Union{Integer, Array{<:Integer, 1}},
         pftype::ProfileType, plist::Dict{Symbol}) where {Data, GID, PID, LID}
-    graph = CRSGraph(rowMap, maxNumEntriesPerRow, pftype, plist)
+    graph = CSRGraph(rowMap, maxNumEntriesPerRow, pftype, plist)
 
     matrix = CSRMatrix{Data, GID, PID, LID}(rowMap, colMap,
         graph, LocalCSRMatrix{Data, LID}(), plist)
@@ -110,11 +110,11 @@ function CSRMatrix{Data}(rowMap::BlockMap{GID, PID, LID},
     matrix
 end
 
-function CSRMatrix{Data}(graph::CRSGraph{GID, PID, LID}; plist...
+function CSRMatrix{Data}(graph::CSRGraph{GID, PID, LID}; plist...
         ) where {Data, GID, PID, LID}
     CSRMatrix{Data}(graph, Dict(Array{Tuple{Symbol, Any}}(plist)))
 end
-function CSRMatrix{Data}(graph::CRSGraph{GID, PID, LID},plist::Dict{Symbol}
+function CSRMatrix{Data}(graph::CSRGraph{GID, PID, LID},plist::Dict{Symbol}
         ) where {Data, GID, PID, LID}
     numCols = numMyElements(getColMap(graph))
     localGraph = getLocalGraph(graph)
@@ -139,7 +139,7 @@ function CSRMatrix(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, L
                 * "have the same length"))
     end
 
-    graph = CRSGraph(rowMap, colMap, rowOffsets, columnIndices, plist)
+    graph = CSRGraph(rowMap, colMap, rowOffsets, columnIndices, plist)
     localGraph = getLocalGraph(graph)
 
     numCols = numMyElements(getColMap(graph))
@@ -157,7 +157,7 @@ function CSRMatrix(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, L
         localMatrix::LocalCSRMatrix{Data, LID}, plist::Dict{Symbol}
         ) where {Data, GID, PID, LID}
 
-    graph = CRSGraph(rowMap, colMap, localMatrix.graph, plist)
+    graph = CSRGraph(rowMap, colMap, localMatrix.graph, plist)
 
     matrix = CSRMatrix(rowMap, colMap, graph, localMatrix, plist)
 
@@ -260,10 +260,10 @@ function getRowMapMultiVector(mat::CSRMatrix{Data, GID, PID, LID}, Y::MultiVecto
 end
 
 
-#does nothing, exists only to be a parallel to CRSGraph
+#does nothing, exists only to be a parallel to CSRGraph
 computeGlobalConstants(matrix::CSRMatrix) = nothing
 
-#Tpetra's only clears forbNorm, exists only to be a parallel to CRSGraph
+#Tpetra's only clears forbNorm, exists only to be a parallel to CSRGraph
 clearGlobalConstants(matrix::CSRMatrix) = nothing
 
 function globalAssemble(matrix::CSRMatrix)
@@ -453,7 +453,7 @@ function fillLocalGraphAndMatrix(matrix::CSRMatrix{Data, GID, PID, LID},
         myGraph.storageStatus = STORAGE_1D_PACKED
     end
 
-    myGraph.localGraph = LocalCRSGraph(inds, ptrs)
+    myGraph.localGraph = LocalCSRGraph(inds, ptrs)
     matrix.localMatrix = LocalCSRMatrix(myGraph.localGraph, vals, getLocalNumCols(matrix))
 end
 

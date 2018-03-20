@@ -1,8 +1,8 @@
-export CRSGraph
+export CSRGraph
 
 #TODO document the type and constructors
 
-mutable struct CRSGraph{GID <: Integer, PID <: Integer, LID <: Integer} <: RowGraph{GID, PID, LID}
+mutable struct CSRGraph{GID <: Integer, PID <: Integer, LID <: Integer} <: RowGraph{GID, PID, LID}
     rowMap::BlockMap{GID, PID, LID}
     colMap::Nullable{BlockMap{GID, PID, LID}}
     rangeMap::Nullable{BlockMap{GID, PID, LID}}
@@ -13,7 +13,7 @@ mutable struct CRSGraph{GID <: Integer, PID <: Integer, LID <: Integer} <: RowGr
     #may be null if rangeMap and rowMap are the same
     exporter::Nullable{Export{GID, PID, LID}}
 
-    localGraph::LocalCRSGraph{LID, LID}
+    localGraph::LocalCSRGraph{LID, LID}
 
     #Local number of (populated) entries; must always be consistent
     nodeNumEntries::LID
@@ -66,13 +66,13 @@ mutable struct CRSGraph{GID <: Integer, PID <: Integer, LID <: Integer} <: RowGr
     nonLocals::Dict{GID, Array{GID, 1}}
 
     #Large ammounts of duplication between the constructors, so group it in an inner constructor
-    function CRSGraph(
+    function CSRGraph(
         rowMap::BlockMap{GID, PID, LID},
         colMap::Nullable{BlockMap{GID, PID, LID}},
         rangeMap::Nullable{BlockMap{GID, PID, LID}},
         domainMap::Nullable{BlockMap{GID, PID, LID}},
 
-        localGraph::LocalCRSGraph,
+        localGraph::LocalCSRGraph,
 
         nodeNumEntries::LID,
 
@@ -160,43 +160,43 @@ end
 
 #### Constructors #####
 
-function CRSGraph(rowMap::BlockMap{GID, PID, LID}, maxNumEntriesPerRow::Integer,
+function CSRGraph(rowMap::BlockMap{GID, PID, LID}, maxNumEntriesPerRow::Integer,
         pftype::ProfileType; plist...) where {
         GID <: Integer, PID <: Integer, LID <: Integer}
-    CRSGraph(rowMap, LID(maxNumEntriesPerRow),  pftype, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
+    CSRGraph(rowMap, LID(maxNumEntriesPerRow),  pftype, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
 end
-function CRSGraph(rowMap::BlockMap{GID, PID, LID}, maxNumEntriesPerRow::Integer,
+function CSRGraph(rowMap::BlockMap{GID, PID, LID}, maxNumEntriesPerRow::Integer,
         pftype::ProfileType, plist::Dict{Symbol}) where {
         GID <: Integer, PID <: Integer, LID <: Integer}
-    CRSGraph(rowMap, Nullable{BlockMap{GID, PID, LID}}(), LID(maxNumEntriesPerRow), pftype, plist)
+    CSRGraph(rowMap, Nullable{BlockMap{GID, PID, LID}}(), LID(maxNumEntriesPerRow), pftype, plist)
 end
 
-function CRSGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
+function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
         maxNumEntriesPerRow::Integer, pftype::ProfileType; plist...) where {
         GID <: Integer, PID <: Integer, LID <: Integer}
-    CRSGraph(rowMap, colMap, LID(maxNumEntriesPerRow), pftype, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
+    CSRGraph(rowMap, colMap, LID(maxNumEntriesPerRow), pftype, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
 end
-function CRSGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
+function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
         maxNumEntriesPerRow::Integer, pftype::ProfileType, plist::Dict{Symbol}) where {
         GID <: Integer, PID <: Integer, LID <: Integer}
-    CRSGraph(rowMap, Nullable(colMap), LID(maxNumEntriesPerRow), pftype, plist)
+    CSRGraph(rowMap, Nullable(colMap), LID(maxNumEntriesPerRow), pftype, plist)
 end
 
-function CRSGraph(rowMap::BlockMap{GID, PID, LID}, colMap::Nullable{BlockMap{GID, PID, LID}},
+function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::Nullable{BlockMap{GID, PID, LID}},
         maxNumEntriesPerRow::LID, pftype::ProfileType; plist...) where {
         GID <: Integer, PID <: Integer, LID <: Integer}
-    CRSGraph(rowMap, colMap, maxNumEntriesPerRow, pftype, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
+    CSRGraph(rowMap, colMap, maxNumEntriesPerRow, pftype, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
 end
-function CRSGraph(rowMap::BlockMap{GID, PID, LID}, colMap::Nullable{BlockMap{GID, PID, LID}},
+function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::Nullable{BlockMap{GID, PID, LID}},
         maxNumEntriesPerRow::LID, pftype::ProfileType, plist::Dict{Symbol}) where {
         GID <: Integer, PID <: Integer, LID <: Integer}
-    graph = CRSGraph(
+    graph = CSRGraph(
         rowMap,
         colMap,
         Nullable{BlockMap{GID, PID, LID}}(),
         Nullable{BlockMap{GID, PID, LID}}(),
 
-        LocalCRSGraph{LID, LID}(), #localGraph
+        LocalCSRGraph{LID, LID}(), #localGraph
 
         LID(0), #nodeNumEntries
 
@@ -218,43 +218,43 @@ function CRSGraph(rowMap::BlockMap{GID, PID, LID}, colMap::Nullable{BlockMap{GID
     graph
 end
 
-function CRSGraph(rowMap::BlockMap{GID, PID, LID}, numEntPerRow::AbstractArray{<:Integer, 1},
+function CSRGraph(rowMap::BlockMap{GID, PID, LID}, numEntPerRow::AbstractArray{<:Integer, 1},
         pftype::ProfileType; plist...)  where {
         GID <: Integer, PID <: Integer, LID <: Integer}
-    CRSGraph(rowMap, numEntPerRow, pftype, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
+    CSRGraph(rowMap, numEntPerRow, pftype, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
 end
-function CRSGraph(rowMap::BlockMap{GID, PID, LID}, numEntPerRow::AbstractArray{<:Integer, 1},
+function CSRGraph(rowMap::BlockMap{GID, PID, LID}, numEntPerRow::AbstractArray{<:Integer, 1},
         pftype::ProfileType, plist::Dict{Symbol})  where {
         GID <: Integer, PID <: Integer, LID <: Integer}
-    CRSGraph(rowMap, Nullable{BlockMap{GID, PID, LID}}(), numEntPerRow, pftype, plist)
+    CSRGraph(rowMap, Nullable{BlockMap{GID, PID, LID}}(), numEntPerRow, pftype, plist)
 end
 
-function CRSGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
+function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
         numEntPerRow::AbstractArray{<:Integer, 1}, pftype::ProfileType;
         plist...)  where {GID <: Integer, PID <: Integer, LID <: Integer}
-    CRSGraph(rowMap, colMap, numEntPerRow, pftype, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
+    CSRGraph(rowMap, colMap, numEntPerRow, pftype, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
 end
-function CRSGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
+function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
         numEntPerRow::AbstractArray{<:Integer, 1}, pftype::ProfileType,
         plist::Dict{Symbol})  where {GID <: Integer, PID <: Integer, LID <: Integer}
-    CRSGraph(rowMap, Nullable(colMap), numEntPerRow, pftype, plist)
+    CSRGraph(rowMap, Nullable(colMap), numEntPerRow, pftype, plist)
 end
 
-function CRSGraph(rowMap::BlockMap{GID, PID, LID}, colMap::Nullable{BlockMap{GID, PID, LID}},
+function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::Nullable{BlockMap{GID, PID, LID}},
         numEntPerRow::AbstractArray{<:Integer, 1}, pftype::ProfileType;
         plist...)  where {GID <: Integer, PID <: Integer, LID <: Integer}
-    CRSGraph(rowMap, colMap, numEntPerRow, pftype, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
+    CSRGraph(rowMap, colMap, numEntPerRow, pftype, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
 end
-function CRSGraph(rowMap::BlockMap{GID, PID, LID}, colMap::Nullable{BlockMap{GID, PID, LID}},
+function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::Nullable{BlockMap{GID, PID, LID}},
         numEntPerRow::AbstractArray{<:Integer, 1}, pftype::ProfileType,
         plist::Dict{Symbol})  where {GID <: Integer, PID <: Integer, LID <: Integer}
-    graph = CRSGraph(
+    graph = CSRGraph(
         rowMap,
         colMap,
         Nullable{BlockMap{GID, PID, LID}}(),
         Nullable{BlockMap{GID, PID, LID}}(),
 
-        LocalCRSGraph{LID, LID}(), #localGraph
+        LocalCSRGraph{LID, LID}(), #localGraph
 
         LID(0), #nodeNumEntries
 
@@ -292,21 +292,21 @@ function CRSGraph(rowMap::BlockMap{GID, PID, LID}, colMap::Nullable{BlockMap{GID
 end
 
 
-function CRSGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
+function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
         rowPointers::AbstractArray{LID, 1}, columnIndices::Array{LID, 1};
         plist...) where {GID <: Integer, PID <: Integer, LID <: Integer}
-    CRSGraph(rowMap, colMap, rowPointers, columnIndices, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
+    CSRGraph(rowMap, colMap, rowPointers, columnIndices, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
 end
-function CRSGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
+function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
         rowPointers::AbstractArray{LID, 1}, columnIndices::Array{LID, 1},
         plist::Dict{Symbol}) where {GID <: Integer, PID <: Integer, LID <: Integer}
-    graph = CRSGraph(
+    graph = CSRGraph(
         rowMap,
         Nullable(colMap),
         Nullable{BlockMap{GID, PID, LID}}(),
         Nullable{BlockMap{GID, PID, LID}}(),
 
-        LocalCRSGraph{LID, LID}(), #localGraph
+        LocalCSRGraph{LID, LID}(), #localGraph
 
         LID(0), #nodeNumEntries
 
@@ -326,16 +326,16 @@ function CRSGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LI
     graph
 end
 
-function CRSGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
-        localGraph::LocalCRSGraph{LID, LID}; plist...) where {
+function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
+        localGraph::LocalCSRGraph{LID, LID}; plist...) where {
         GID <: Integer, PID <: Integer, LID <: Integer}
-    CRSGraph(rowMap, colMap, localGraph, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
+    CSRGraph(rowMap, colMap, localGraph, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
 end
-function CRSGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
-        localGraph::LocalCRSGraph{LID, LID}, plist::Dict{Symbol}) where {
+function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
+        localGraph::LocalCSRGraph{LID, LID}, plist::Dict{Symbol}) where {
         GID <: Integer, PID <: Integer, LID <: Integer}
     mapRowCount = numMyElements(rowMap)
-    graph = CRSGraph(
+    graph = CSRGraph(
         rowMap,
         Nullable(colMap),
         Nullable{}(rowMap),

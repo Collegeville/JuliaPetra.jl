@@ -13,19 +13,19 @@ function basicTests(graph)
     @test 0 == getNumEntriesInGlobalRow(graph, 1)
 end
 
-graph = CRSGraph(map, UInt16(15), STATIC_PROFILE, Dict{Symbol, Any}())
+graph = CSRGraph(map, UInt16(15), STATIC_PROFILE, Dict{Symbol, Any}())
 @test map == getMap(graph)
 @test STATIC_PROFILE == getProfileType(graph)
 basicTests(graph)
 
-graph = CRSGraph(map, UInt16(15), STATIC_PROFILE, Dict{Symbol, Any}(:debug=>true))
+graph = CSRGraph(map, UInt16(15), STATIC_PROFILE, Dict{Symbol, Any}(:debug=>true))
 @test map == getMap(graph)
 @test STATIC_PROFILE == getProfileType(graph)
 basicTests(graph)
 insertGlobalIndices(graph, 1, [2, 3])
 @test 2 == getNumEntriesInGlobalRow(graph, 1)
 
-graph2 = CRSGraph(map, UInt16(15), DYNAMIC_PROFILE, Dict{Symbol, Any}(:debug=>true))
+graph2 = CSRGraph(map, UInt16(15), DYNAMIC_PROFILE, Dict{Symbol, Any}(:debug=>true))
 @test map == getMap(graph2)
 @test DYNAMIC_PROFILE == getProfileType(graph2)
 basicTests(graph2)
@@ -39,8 +39,8 @@ doImport(graph, graph2, impor, REPLACE)
 commObj = SerialComm{UInt8, Int8, UInt16}()
 map = BlockMap(20, commObj)
 
-@test_throws InvalidArgumentError CRSGraph(map, UInt16(15), STATIC_PROFILE, Dict{Symbol, Any}())
+@test_throws InvalidArgumentError CSRGraph(map, UInt16(15), STATIC_PROFILE, Dict{Symbol, Any}())
 
 
-#TODO ensure result of CRSGraph(rowMap, colMap, localGraph, plist) is fill complete
-#TODO ensure CRSGraph(rowMap, colMap, rowOffsets, entries, plist) sets up local graph correctly (same length and content in local graph as was given to constructor)
+#TODO ensure result of CSRGraph(rowMap, colMap, localGraph, plist) is fill complete
+#TODO ensure CSRGraph(rowMap, colMap, rowOffsets, entries, plist) sets up local graph correctly (same length and content in local graph as was given to constructor)

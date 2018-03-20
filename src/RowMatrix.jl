@@ -101,7 +101,7 @@ end
 function leftScale!(matrix::RowMatrix{Data, GID, PID, LID}, X::MultiVector{Data, GID, PID, LID}) where {
         Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer}
     if numVectors(X) != 1
-        throw(InvalidArgumentError("Can only scale CRS matrix with column vector, not multi vector"))
+        throw(InvalidArgumentError("Can only scale CSR matrix with column vector, not multi vector"))
     end
     leftScale!(matrix, X.data)
 end
@@ -109,7 +109,7 @@ end
 function rightScale!(matrix::RowMatrix{Data, GID, PID, LID}, X::MultiVector{Data, GID, PID, LID}) where {
         Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer}
     if numVectors(X) != 1
-        throw(InvalidArgumentError("Can only scale CRS matrix with column vector, not multi vector"))
+        throw(InvalidArgumentError("Can only scale CSR matrix with column vector, not multi vector"))
     end
     rightScale!(matrix, X.data)
 end

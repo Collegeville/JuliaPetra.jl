@@ -866,7 +866,7 @@ function __makeColMap(graph::CSRGraph{GID, PID, LID}, wrappedDomMap::Nullable{Bl
                 myColumns = copy(myGlobalElements(colMap))
             end
         end
-        return (error, BlockMap(myColumns, getComm(domMap)))
+        return (error, BlockMap(numGlobalElements(colMap), myColumns, getComm(domMap)))
     end
 
     #else if graph.isGloballyIndexed
@@ -976,5 +976,5 @@ function __makeColMap(graph::CSRGraph{GID, PID, LID}, wrappedDomMap::Nullable{Bl
         end
     end
 
-    return (error, BlockMap(myColumns, getComm(domMap)))
+    return (error, BlockMap(numGlobalElements(domMap), myColumns, getComm(domMap)))
 end

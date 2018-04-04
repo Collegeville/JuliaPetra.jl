@@ -131,12 +131,12 @@ end
 
 Constructor for user-defined arbitrary distribution of elements
 """
-function BlockMap(myGlobalElements::AbstractArray{<:Integer}, comm::Comm{GID, PID,LID}
+function BlockMap(numGlobalElements::Integer, myGlobalElements::AbstractArray{<:Integer}, comm::Comm{GID, PID,LID}
         ) where GID <: Integer where PID <: Integer where LID <: Integer
     BlockMap(Array{GID}(myGlobalElements), comm)
 end
 
-function BlockMap(myGlobalElements::AbstractArray{GID}, comm::Comm{GID, PID,LID}
+function BlockMap(numGlobalElements::Integer, myGlobalElements::AbstractArray{GID}, comm::Comm{GID, PID,LID}
         ) where GID <: Integer where PID <: Integer where LID <: Integer
     numMyElements = LID(length(myGlobalElements))
 
@@ -186,24 +186,28 @@ function BlockMap(myGlobalElements::AbstractArray{GID}, comm::Comm{GID, PID,LID}
         data.minAllGID = -tmp_recv[1]
         data.maxAllGID =  tmp_recv[2]
 
-        if data.linearMap
-            data.numGlobalElements = sumAll(data.comm, data.numMyElements)
+        if numGlobalElements != -1
+            data.numGlobalElements = numGlobalElements
         else
-            #if 1+ GIDs shared between processors, need to total that correctly
-            allIDs = gatherAll(data.comm, myGlobalElements)
+            if data.linearMap
+                data.numGlobalElements = sumAll(data.comm, data.numMyElements)
+            else
+                #if 1+ GIDs shared between processors, need to total that correctly
+                allIDs = gatherAll(data.comm, myGlobalElements)
 
-            indexModifier = 1 - data.minAllGID
-            maxGID = data.maxAllGID
+                indexModifier = 1 - data.minAllGID
+                maxGID = data.maxAllGID
 
-            count = 0
-            arr = falses(maxGID + indexModifier)
-            for id in allIDs
-                if !arr[GID(id + indexModifier)]
-                    arr[GID(id + indexModifier)] = true
-                    count += 1
+                count = 0
+                arr = falses(maxGID + indexModifier)
+                for id in allIDs
+                    if !arr[GID(id + indexModifier)]
+                        arr[GID(id + indexModifier)] = true
+                        count += 1
+                    end
                 end
+                data.numGlobalElements = count
             end
-            data.numGlobalElements = count
         end
     end
 

@@ -11,41 +11,46 @@ export getComm
 
 """
 The base type for types that represent communication in parallel computing.
+
 All subtypes must have the following methods, with CommImpl standing in for the subtype:
 
-barrier(comm::CommImpl) - Each processor must wait until all processors have arrived
+    barrier(comm::CommImpl)
+Each processor must wait until all processors have arrived
 
-broadcastAll(comm::CommImpl, myvals::AbstractArray{T}, Root::Integer)::Array{T} where T
-    - Takes a list of input values from the root processor and sends to all
-        other processors.  The values are returned (including on the root process)
+    broadcastAll(comm::CommImpl, myvals::AbstractArray{T}, Root::Integer)::Array{T} where T
+Takes a list of input values from the root processor and sends to all
+other processors.  The values are returned (including on the root process)
 
-gatherAll(comm::CommImpl, myVals::AbstractArray{T})::Array{T} where T
-    - Takes a list of input values from all processors and returns an ordered
-        contiguous list of those values on each processor
+    gatherAll(comm::CommImpl, myVals::AbstractArray{T})::Array{T} where T
+Takes a list of input values from all processors and returns an ordered
+contiguous list of those values on each processor
 
-sumAll(comm::CommImpl, partialsums::AbstractArray{T})::Array{T} where T
-    - Take a list of input values from all processors and returns the sum on each
-        processor.  The method +(::T, ::T)::T can be assumed to exist
+    sumAll(comm::CommImpl, partialsums::AbstractArray{T})::Array{T} where T
+Take a list of input values from all processors and returns the sum on each
+processor.  The method +(::T, ::T)::T can be assumed to exist
 
-maxAll(comm::CommImpl, partialmaxes::AbstractArray{T})::Array{T} where T
-    - Takes a list of input values from all processors and returns the max to all
-        processors.  The method <(::T, ::T)::Bool can be assumed to exist
+    maxAll(comm::CommImpl, partialmaxes::AbstractArray{T})::Array{T} where T
+Takes a list of input values from all processors and returns the max to all
+processors.  The method <(::T, ::T)::Bool can be assumed to exist
 
-minAll(comm::CommImpl, partialmins::AbstractArray{T})::Array{T} where T
-    - Takes a list of input values from all processors and returns the min to all
-        processors.  The method <(::T, ::T)::Bool can be assumed to exist
+    minAll(comm::CommImpl, partialmins::AbstractArray{T})::Array{T} where T
+Takes a list of input values from all processors and returns the min to all
+processors.  The method <(::T, ::T)::Bool can be assumed to exist
 
-scanSum(comm::CommImpl, myvals::AbstractArray{T})::Array{T} where T
-    - Takes a list of input values from all processors, computes the scan sum and
-        returns it to all processors such that processor i contains the sum of
-        values from processor 1 up to and including processor i.  The method
-        +(::T, ::T)::T can be assumed to exist
+    scanSum(comm::CommImpl, myvals::AbstractArray{T})::Array{T} where T
+Takes a list of input values from all processors, computes the scan sum and
+returns it to all processors such that processor i contains the sum of
+values from processor 1 up to and including processor i.  The method
+`+(::T, ::T)::T` is used for the addition.
 
-myPid(comm::CommImpl{GID, PID, LID})::PID - Returns the process rank
+    myPid(comm::CommImpl{GID, PID, LID})::PID
+Returns the process rank
 
-numProc(comm::CommImpl{GID, PID, LID})::PID - Returns the total number of processes
+    numProc(comm::CommImpl{GID, PID, LID})::PID
+Returns the total number of processes
 
-createDistributor(comm::CommImpl{GID, PID, LID})::Distributor{GID, PID, LID} - Create a distributor object
+    createDistributor(comm::CommImpl{GID, PID, LID})::Distributor{GID, PID, LID}
+Create a distributor object
 
 """
 abstract type Comm{GID <: Integer, PID <:Integer, LID <: Integer}
@@ -113,6 +118,12 @@ values from processor 1 up to, and including, processor `i`.  The method
 """
 scanSum(comm::Comm, val) = scanSum(comm, [val])[1]
 
+"""
+    getComm(obj)
+
+Gets the Comm for the object, if aplicable
+"""
+getComm(comm::Comm) = comm
 
 
 #### documentation for required methods ####
@@ -145,11 +156,3 @@ function numProc end
 Creates a distributor for the given Comm object
 """
 function createDistributor end
-
-
-"""
-    getComm(obj)
-
-Gets the Comm for the object, if aplicable
-"""
-getComm(comm::Comm) = comm

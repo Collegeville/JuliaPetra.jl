@@ -12,31 +12,30 @@ The base type for gather/scatter setup.
 All subtypes must have the following methods, with DistributorImpl standing
 in for the subtype:
 
-createFromSends(dist::DistributorImpl,exportPIDs::AbstractArray{PID})
-        ::Integer where PID <:Integer
-    - sets up the Distributor object using a list of process IDs to which we
-        export and the number of IDs being exported.  Returns the number of
-        IDs this processor will be receiving
+    createFromSends(dist::DistributorImpl,exportPIDs::AbstractArray{PID})::Integer where PID <:Integer
+Sets up the Distributor object using a list of process IDs to which we
+export and the number of IDs being exported.  Returns the number of
+IDs this processor will be receiving.
 
-createFromRecvs(dist::DistributorImpl, remoteGIDs::AbstractArray{GID},
-        remotePIDs::AbstractArray{PID})::Tuple{AbstractArray{GID}, AbstractArray{PID}}
-        where GID <: Integer where PID <: Integer
-    - sets up the Distributor object using a list of remote global IDs and
-        corresponding PIDs.  Returns a tuple with the global IDs and their
-        respective processor IDs being sent by me.
+    createFromRecvs(dist::DistributorImpl, remoteGIDs::AbstractArray{GID}, remotePIDs::AbstractArray{PID})::Tuple{AbstractArray{GID}, AbstractArray{PID}} where GID <: Integer where PID <: Integer
+Sets up the Distributor object using a list of remote global IDs and corresponding
+PIDs.  Returns a tuple with the global IDs and their respective processor IDs
+being sent by this processor.
 
-resolvePosts(dist::DistributorImpl, exportObjs::AbstractArray)
-    - Post buffer of export objects (can do other local work before executing
-        Waits).  Otherwise, as do(::DistributorImpl, ::Array{T})::Array{T}
+    resolvePosts(dist::DistributorImpl, exportObjs::AbstractArray)
+Post buffer of export objects.  Other, local work can be done before resolving
+the waits.  Otherwise, as [`do(::DistributorImpl, ::Array{T})::Array{T}`](@ref).
 
-resolveWaits(dist::DistributorImpl)::AbstractArray - wait on a set of posts
+    resolveWaits(dist::DistributorImpl)::AbstractArray
+Wait on a set of posts
 
-resolveReversePosts(dist::DistributorImpl, exportObjs::AbstractArray)
-    - Do reverse post of buffer of export objects (can do other local work
-        before executing Waits).  Otherwise, as
-        doReverse(::DistributorImpl, ::AbstractArray{T})::AbstractArray{T}
+    resolveReversePosts(dist::DistributorImpl, exportObjs::AbstractArray)
+Do reverse post of buffer of export objects Other, local work can be done before
+resolving the waits.  Otherwise, as
+[`doReverse(::DistributorImpl, ::AbstractArray{T})::AbstractArray{T}`](@ref).
 
-resolveReverseWaits(dist::DistributorImpl)::AbstractArray - wait on a reverse set of posts
+    resolveReverseWaits(dist::DistributorImpl)::AbstractArray
+Wait on a set of reverse posts.
 
 """
 abstract type Distributor{GID <: Integer, PID <: Integer, LID <: Integer}
@@ -93,29 +92,29 @@ end
 """
     resolvePosts(dist::Distributor, exportObjs::AbstractArray)
 
-Post buffer of export objects (can do other local work before executing
-Waits.  Otherwise, as resolve(::DistributorImpl, ::AbstractArray{T})::AbstractArray{T}
+Post buffer of export objects.  Other, local work can be done before resolving
+the waits.  Otherwise, as [`do(::DistributorImpl, ::Array{T})::Array{T}`](@ref).
 """
 function resolvePosts end
 
 """
     resolveWaits(dist::Distributor)::AbstractArray
 
-wait on a set of posts
+Wait on a set of posts.
 """
 function resolveWaits end
 
 """
     resolveReversePosts(dist::Distributor, exportObjs::AbstractArray)
-Do reverse post of buffer of export objects (can do other local work
-before executing Waits).  Otherwise, as
-doReverse(::DistributorImpl, ::AbstractArray{T})::AbstractArray{T}
+Do reverse post of buffer of export objects Other, local work can be done before
+resolving the waits.  Otherwise, as
+[`doReverse(::DistributorImpl, ::AbstractArray{T})::AbstractArray{T}`](@ref).
 """
 function resolveReversePosts end
 
 """
     resolveReverseWaits(dist::Distributor)::AbstractArray
 
-wait on a reverse set of posts
+Wait on a set of reverse posts.
 """
 function resolveReverseWaits end

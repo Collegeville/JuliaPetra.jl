@@ -6,7 +6,8 @@ export getGraph, getGlobalRowCopy, getLocalRowCopy, getGlobalRowView, getLocalRo
 #DECISION are any other mathmatical operations needed?
 
 """
-RowMatrix is the base type for all row oriented Petra matrices
+RowMatrix is the base type for all row oriented Petra matrices.
+RowMatrix fufils both the Operator and DistObject interfaces.
 
 All subtypes must have the following methods, with Impl standing in for the subtype:
 
@@ -50,7 +51,7 @@ However, the following methods are implemented by redirecting the call to the ma
 
     rangeMap(operator::RowMatrix{Data, GID, PID, LID})::BlockMap{GID, PID, LID}
 
-The required methods from DistObject must also be implemented.  `getMap(...)`, as required by SrcDistObject, is implemented to forward the call to `getRowMap(...)`
+`getMap(...)`, as required by SrcDistObject, is implemented by calling `getRowMap(...)`
 
 
 The following methods are currently implemented by redirecting the call to the matrix's graph by calling `getGraph(matrix)`.  It is recommended that the implmenting class implements these more efficiently.

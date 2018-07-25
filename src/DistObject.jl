@@ -7,12 +7,23 @@ export getMap
 # Note that all packet size information was removed due to the use of julia's
 # built in serialization/objects
 
-#=
+
+
 """
-A base type for constructing and using dense multi-vectors, vectors and matrices in parallel.
+An interface for providing a target when constructing and using dense multi-vectors, vectors and matrices in parallel.
+
+    getMap(::SrcDistObject)
+Gets the map of the indices of the SrcDistObject
+
+See [`DistObject`](@ref)
+"""
+const SrcDistObject = Any
+
+"""
+An interface for providing a source when constructing and using dense multi-vectors, vectors and matrices in parallel.
 
 
-To support transfers the following methods must be implemented for the source type and the target type
+To support transfers the following methods must be implemented for the combination of source type and the target type
 
     checkSizes(source::<:SrcDistObject{GID, PID, LID}, target::<:DistObject{GID, PID, LID})::Bool
 Whether the source and target are compatible for a transfer
@@ -26,12 +37,11 @@ method returns the array of objects to export
 
     unpackAndCombine(target::<:DistObject{GID, PID, LID},importLIDs::AbstractArray{LID, 1}, imports::AAbstractrray, distor::Distributor{GID, PID, LID}, cm::CombineMode)
 Perform any unpacking and combining after communication
-"""
 
+See [`SrcDistObject`](@ref)
 """
-SrcDistObject requires getMap(::SrcDistObject)
-"""
-=#
+const DistObject = Any
+
 
 
 """

@@ -15,9 +15,6 @@ export isFillActive
 """
 RowGraph is the base "type" for all row oriented storage graphs
 
-RowGraph is actually a type union of SrcDistRowGraph and DistRowGraph,
-which are (direct) subtypes of SrcDistObject and DistObject, respectively.
-
 Instances of these types are required to implement the following submethods
 
     getRowMap(::RowGraph{GID, PID, LID})::BlockMap{GID, PID, LID}

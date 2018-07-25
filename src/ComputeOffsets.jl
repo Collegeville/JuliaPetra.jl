@@ -1,5 +1,5 @@
 
-#used in implementation of CSRGraph, CSRMatrix and, if added, FixedHashTable
+#used in implementation of CSRGraph and CSRMatrix
 
 
 function computeOffsets(rowPtrs::AbstractArray{<: Integer, 1}, numEnts::Integer)

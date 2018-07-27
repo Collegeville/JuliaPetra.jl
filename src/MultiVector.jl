@@ -120,25 +120,25 @@ function scale(vect::MultiVector, alpha::Number)
 end
 
 
- function Base.scale!(vect::MultiVector, alpha::AbstractArray{<:Number, 1})
+function Base.scale!(vect::MultiVector, alpha::AbstractArray{<:Number})
     for v = 1:vect.numVectors
         @inbounds vect.data[:, v] *= alpha[v]
     end
     vect
- end
+end
 
 """
-    scale(::MultiVector{Data, GID, PID, LID}, ::AbstractArray{<:Number, 1})::MultiVector{Data, GID, PID, LID}
+    scale(::MultiVector{Data, GID, PID, LID}, ::AbstractArray{<:Number})::MultiVector{Data, GID, PID, LID}
 
 Scales each column of a copy of the mulitvector and returns the copy
 """
-function scale(vect::MultiVector, alpha::T) where T <: AbstractArray{<:Number, 1}
+function scale(vect::MultiVector, alpha::T) where T <: AbstractArray{<:Number}
     scale!(copy(vect), alpha)
 end
 
 
 function Base.dot(vect1::MultiVector{Data, GID, PID, LID}, vect2::MultiVector{Data, GID, PID, LID}
-        )::AbstractArray{Data} where {Data, GID, PID, LID}
+        )::AbstractArray{Data, 2} where {Data, GID, PID, LID}
     numVects = numVectors(vect1)
     length = localLength(vect1)
     if numVects != numVectors(vect2)
@@ -147,7 +147,7 @@ function Base.dot(vect1::MultiVector{Data, GID, PID, LID}, vect2::MultiVector{Da
     if length != localLength(vect2)
         throw(InvalidArgumentError("Vectors must have the same length to take the dot product of them"))
     end
-    dotProducts = Array{Data, 1}(numVects)
+    dotProducts = Array{Data, 2}(1, numVects)
 
     data1 = vect1.data
     data2 = vect2.data
@@ -160,7 +160,7 @@ function Base.dot(vect1::MultiVector{Data, GID, PID, LID}, vect2::MultiVector{Da
         dotProducts[vect] = sum
     end
 
-    dotProducts = sumAll(getComm(vect1), dotProducts)::Vector{Data}
+    dotProducts = sumAll(getComm(vect1), dotProducts)::Array{Data, 2}
 
     dotProducts
 end
@@ -211,7 +211,7 @@ macro normImpl(mVect, Data, normType)
     quote
         const numVects = numVectors($(esc(mVect)))
         const localVectLength = localLength($(esc(mVect)))
-        norms = Array{$(esc(Data)), 1}(numVects)
+        norms = Array{$(esc(Data)), 2}(1, numVects)
         for i = 1:numVects
             sum = $(esc(Data))(0)
             for j = 1:localVectLength
@@ -227,7 +227,7 @@ macro normImpl(mVect, Data, normType)
             norms[i] = sum
         end
 
-        norms = sumAll(getComm(getMap($(esc(mVect)))), norms)::Vector{$(esc(Data))}
+        norms = sumAll(getComm(getMap($(esc(mVect)))), norms)::Array{$(esc(Data)), 2}
 
         $(if normType == 2
             :(@. norms = sqrt(norms))
@@ -239,7 +239,7 @@ macro normImpl(mVect, Data, normType)
 end
 
 
-function norm2(mVect::MultiVector{Data})::AbstractArray{Data, 1} where Data
+function norm2(mVect::MultiVector{Data})::AbstractArray{Data} where Data
     @normImpl mVect Data 2
 end
 
@@ -380,4 +380,28 @@ function ==(A::MultiVector, B::MultiVector)
                     sameAs(A.map, B.map)
 
     minAll(getComm(A), localEquality)
+end
+
+
+function Base.Broadcast.promote_containertype(::Type{<: MultiVector}, ::Type{<: MultiVector})
+    MultiVector
+end
+function Base.Broadcast.promote_containertype(::Type{Any}, ::Type{<: MultiVector})
+    MultiVector
+end
+function Base.Broadcast.promote_containertype(::Type{<: MultiVector}, ::Type{Any})
+    MultiVector
+end
+
+function Base.Broadcast._containertype(::Type{<:MultiVector})
+    MultiVector
+end
+function Base.Broadcast.broadcast_indices(::Type{<: MultiVector}, vect)
+    indices(vect.data)
+end
+@inline function Base.Broadcast.broadcast_c(f, ::Type{<:MultiVector}, a...)
+    Base.Broadcast_c(f, Array, map(mv->mv.data, a)...)
+end
+@inline function Base.Broadcast.broadcast!(f, C::MultiVector, A...)
+    broadcast!(f, C.data, map(a->if isa(a, MultiVector) a.data else a end, A)...)
 end

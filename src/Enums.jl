@@ -1,5 +1,5 @@
 export CombineMode, ADD, INSERT, REPLACE, ABSMAX, ZERO
-export TransposeMode, NO_TRANS, TRANS, CONJ_TRANS
+export TransposeMode, NO_TRANS, TRANS, CONJ_TRANS, isTransposed, applyConjugation
 export ProfileType, STATIC_PROFILE, DYNAMIC_PROFILE
 export IndexType, LOCAL_INDICES, GLOBAL_INDICES
 export StorageStatus, STORAGE_2D, STORAGE_1D_UNPACKED, STORAGE_1D_PACKED

@@ -127,13 +127,79 @@ end
 
 
 """
-    BlockMap(myGlobalElements, comm)
+    BlockMap(numGlobalElements, myGlobalElements, comm)
 
 Constructor for user-defined arbitrary distribution of elements
 """
 function BlockMap(numGlobalElements::Integer, myGlobalElements::AbstractArray{<:Integer}, comm::Comm{GID, PID,LID}
         ) where GID <: Integer where PID <: Integer where LID <: Integer
-    BlockMap(Array{GID}(myGlobalElements), comm)
+    BlockMap(numGlobalElements, Array{GID}(myGlobalElements), comm)
+end
+
+function BlockMap(numGlobalElements::Integer, myGlobalElements::UnitRange{GID}, comm::Comm{GID, PID, LID}
+        ) where {GID <: Integer, PID <: Integer, LID <: Integer}
+
+    numMyElements = LID(length(myGlobalElements))
+
+    const data = BlockMapData(GID(0), comm)
+    const map = BlockMap{GID, PID, LID}(data)
+
+    data.numMyElements = numMyElements
+
+    data.myGlobalElements = collect(myGlobalElements)
+    data.minMyGID = first(myGlobalElements)
+    data.maxMyGID = last(myGlobalElements)
+
+    #TODO this doesn't check if there is overlap between processors
+    # call the reduce to allow mixing this version with the abstract version
+    data.linearMap = Bool(minAll(data.comm, 1))
+
+    if numProc(comm) == 1
+        data.numGlobalElements = data.numMyElements
+        data.minAllGID = data.minMyGID
+        data.maxAllGID = data.maxMyGID
+    else
+        tmp_send = [
+            -((data.numMyElements > 0)?
+                data.minMyGID:Inf)
+            , data.maxMyGID]
+
+        tmp_recv = maxAll(data.comm, tmp_send)
+
+        @assert typeof(tmp_recv[1]) <: Integer "Result type is $(typeof(tmp_recv[1])), should be subtype of Integer"
+
+        data.minAllGID = -tmp_recv[1]
+        data.maxAllGID =  tmp_recv[2]
+
+        if numGlobalElements != -1
+            data.numGlobalElements = numGlobalElements
+        else
+            if data.linearMap
+                data.numGlobalElements = sumAll(data.comm, data.numMyElements)
+            else
+                #if 1+ GIDs shared between processors, need to total that correctly
+                allIDs = gatherAll(data.comm, myGlobalElements)
+
+                indexModifier = 1 - data.minAllGID
+                maxGID = data.maxAllGID
+
+                count = 0
+                arr = falses(maxGID + indexModifier)
+                for id in allIDs
+                    if !arr[GID(id + indexModifier)]
+                        arr[GID(id + indexModifier)] = true
+                        count += 1
+                    end
+                end
+                data.numGlobalElements = count
+            end
+        end
+    end
+
+    data.distributedGlobal = isDistributedGlobal(map, data.numGlobalElements, numMyElements)
+
+    EndOfConstructorOps(map)
+    map
 end
 
 function BlockMap(numGlobalElements::Integer, myGlobalElements::AbstractArray{GID}, comm::Comm{GID, PID,LID}
@@ -167,6 +233,7 @@ function BlockMap(numGlobalElements::Integer, myGlobalElements::AbstractArray{GI
         data.maxMyGID = 0
     end
 
+    #TODO this doesn't check if there is overlap between processors
     data.linearMap = Bool(minAll(data.comm, linear))
 
     if numProc(comm) == 1

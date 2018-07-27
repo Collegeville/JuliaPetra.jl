@@ -20,16 +20,7 @@ end
 function Import(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID},
         userRemotePIDs::AbstractArray{PID}, remoteGIDs::AbstractArray{GID},
         userExportLIDs::AbstractArray{LID}, userExportPIDs::AbstractArray{PID},
-        useRemotePIDGID::Bool; plist...) where {
-        GID <: Integer, PID <: Integer, LID <: Integer}
-    Import{GID, PID, LID}(source, target, userRemotePIDs, remoteGIDs,
-        userExportLIDs, userExportPIDs, useRemotePIDGID, Dict(plist))
-end
-
-function Import(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID},
-        userRemotePIDs::AbstractArray{PID}, remoteGIDs::AbstractArray{GID},
-        userExportLIDs::AbstractArray{LID}, userExportPIDs::AbstractArray{PID},
-        useRemotePIDGID::Bool, plist::Dict{Symbol}
+        useRemotePIDGID::Bool
         ) where {GID <: Integer, PID <: Integer, LID <: Integer}
 
     importData = ImportExportData(source, target)
@@ -91,16 +82,7 @@ function Import(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID}
     Import(importData)
 end
 
-function Import(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID}, remotePIDs::Nullable{AbstractArray{PID}}=Nullable{AbstractArray{PID}}(); plist...) where {GID <: Integer, PID <: Integer, LID <: Integer}
-    Import(source, target, remotePIDs,
-        Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
-end
-
-function Import(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID}, plist::Dict{Symbol}) where {GID <: Integer, PID <: Integer, LID <: Integer}
-    Import(source, target, Nullable{AbstractArray{PID}}(), plist)
-end
-
-function Import(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID}, remotePIDs::Nullable{AbstractArray{PID}}, plist::Dict{Symbol}) where {GID <: Integer, PID <: Integer, LID <: Integer}
+function Import(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID}, remotePIDs::Nullable{AbstractArray{PID}}=Nullable{AbstractArray{PID}}()) where {GID <: Integer, PID <: Integer, LID <: Integer}
 
     if @debug
         info("$(myPid(getComm(source))): Import ctor\n")

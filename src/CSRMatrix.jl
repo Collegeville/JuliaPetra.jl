@@ -1204,8 +1204,6 @@ function localApply(Y::MultiVector{Data, GID, PID, LID},
 
     #TODO implement this better, can BLAS be used?
     if !isTransposed(mode)
-        #TODO look at best way to order the loops to avoid cache misses
-        # I think this is the better order, since MultiVector is column oriented
         numRows = getLocalNumRows(A)
         for vect = LID(1):numVectors(Y)
             for row = LID(1):numRows

@@ -1,4 +1,5 @@
-export apply!, apply
+export Operator
+export getDomainMap, getRangeMap, apply!, apply
 
 
 """
@@ -32,11 +33,11 @@ Computes ``Y = α\cdot A^{mode}\cdot X + β\cdot Y``, with the following excepti
 function apply! end
 
 
-function apply!(Y::MultiVector{Data, GID, PID, LID}, operator::Any, X::MultiVector{Data, GID, PID, LID}, mode::TransposeMode=TransposeMode.NO_TRANS, alpha::Data=1) where {Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer}
-    apply!(Y, operator, X, mode, alpha, 0)
+function apply!(Y::MultiVector{Data, GID, PID, LID}, operator::Any, X::MultiVector{Data, GID, PID, LID}, mode::TransposeMode=NO_TRANS, alpha::Data=Data(1)) where {Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer}
+    apply!(Y, operator, X, mode, alpha, Data(0))
 end
 
-function apply!(Y::MultiVector{Data, GID, PID, LID}, operator::Any, X::MultiVector{Data, GID, PID, LID}, alpha::Data, beta::Data=0) where {Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer}
+function apply!(Y::MultiVector{Data, GID, PID, LID}, operator::Any, X::MultiVector{Data, GID, PID, LID}, alpha::Data, beta::Data=Data(0)) where {Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer}
     apply!(Y, operator, X, NO_TRANS, alpha, beta)
 end
 

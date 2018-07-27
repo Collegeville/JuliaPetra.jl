@@ -1,4 +1,4 @@
-export SrcDistRowGraph, DistRowGraph, RowGraph
+export RowGraph
 #required methods
 export getRowMap, getColMap, getDomainMap, getRangeMap, getImporter, getExporter
 export getGlobalNumRows, getGlobalNumCols, getGlobalNumEntries, getGlobalNumDiags
@@ -35,18 +35,6 @@ Gets the graph's Import object
     getExporter(::RowGraph{GID, PID, LID})::Export{GID, PID, LID}
 Gets the graph's Export object
 
-    getGlobalNumRows(::RowGraph{GID})::GID
-Returns the number of global rows in the graph
-
-    getGlobalNumCols(::RowGraph{GID})::GID
-Returns the number of global columns in the graph
-
-    getLocalNumRows(::RowGraph{GID, PID, LID})::LID
-Returns the number of rows owned by the calling process
-
-    getLocalNumCols(::RowGraph{GID, PID, LID})::LID
-Returns the number of columns owned by teh calling process
-
     getGlobalNumEntries(::RowGraph{GID, PID, LID})::GID
 Returns the global number of entries in the graph
 
@@ -80,14 +68,11 @@ Whether the graph is lower trianguluar
     isUpperTriangular(::RowGraph{GID, PID, LID})::Bool
 Whether the graph is upper trianguluar
 
-    isLocallyIndexed(::RowGraph)::Bool
-Whether the graph is using local indices
-
     isGloballyIndexed(::RowGraph)::Bool
 Whether the graph is using global indices
 
     isFillComplete(::RowGraph)
-Whether `fillComplete()` has been called
+If the graph is fully build.
 
     getGlobalRowCopy(::RowGraph{GID, PID, LID}, row::GID)::AbstractArray{GID, 1}
 Extracts a copy of the given row of the graph
@@ -142,7 +127,7 @@ end
 """
     getLocalRowCopy(::RowGraph{GID, PID, LID}, row::Integer)::AbstractArray{LID, 1}
 
-Extracts a copy of the given row of the graph
+Extracts a copy of the given row of the graph.
 """
 function getLocalRowCopy(graph::RowGraph{GID, PID, LID},
         row::Integer)::AbstractArray{LID, 1} where{GID, PID, LID}
@@ -153,9 +138,48 @@ end
 """
     isLocallyIndexed(::RowGraph)::Bool
 
-Whether the graph is using local indices
+Whether the graph is using local indices.
+
+The default implementation uses the row graph
 """
 isLocallyIndexed(graph::RowGraph) = !isGloballyIndexed(graph)
+
+
+"""
+    getGlobalNumRows(::RowGraph{GID})::GID
+
+Returns the number of global rows in the graph
+
+The default implementation uses the row graph
+"""
+getGlobalNumRows(graph::RowGraph) = numAllElements(getRowMap(graph))
+
+"""
+    getGlobalNumCols(::RowGraph{GID})::GID
+
+Returns the number of global columns in the graph
+
+The default implementation uses the row graph
+"""
+getGlobalNumCols(graph::RowGraph) = numAllElements(getColMap(graph))
+
+"""
+    getLocalNumRows(::RowGraph{GID, PID, LID})::LID
+
+Returns the number of rows owned by the calling process
+
+The default implementation uses the row graph
+"""
+getLocalNumRows(graph::RowGraph) = numMyElements(getRowMap(graph))
+
+"""
+    getLocalNumCols(::RowGraph{GID, PID, LID})::LID
+
+Returns the number of columns owned by the calling process
+
+The default implementation uses the row graph
+"""
+getLocalNumCols(graph::RowGraph) = nulMyElements(getColMap(graph))
 
 
 #### SrcDistObject methods ####
@@ -219,34 +243,6 @@ function getImporter end
 Gets the graph's Export object
 """
 function getExporter end
-
-"""
-    getGlobalNumRows(::RowGraph{GID})::GID
-
-Returns the number of global rows in the graph
-"""
-function getGlobalNumRows end
-
-"""
-    getGlobalNumCols(::RowGraph{GID})::GID
-
-Returns the number of global columns in the graph
-"""
-function getGlobalNumCols end  #is this really a thing????
-
-"""
-    getLocalNumRows(::RowGraph{GID, PID, LID})::LID
-
-Returns the number of rows owned by the calling process
-"""
-function geLocalNumRows end
-
-"""
-    getLocalNumCols(::RowGraph{GID, PID, LID})::LID
-
-Returns the number of columns owned by the calling process
-"""
-function getLocalNumCols end
 
 """
     getGlobalNumEntries(::RowGraph{GID, PID, LID})::GID

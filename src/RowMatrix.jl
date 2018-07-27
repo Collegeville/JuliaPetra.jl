@@ -26,19 +26,16 @@ Returns a view to the given row using global indices
     getLocalRowView(matrix::RowMatrix{Data, GID, PID, LID},localRow::Integer)::Tuple{AbstractArray{GID, 1}, AbstractArray{Data, 1}}
 Returns a view to the given row using local indices
 
-    getLocalNumDiags(mat::RowMatrix)
-Returns the number of diagonal element on the calling processor
-
     getLocalDiagCopy(matrix::RowMatrix{Data, GID, PID, LID})::MultiVector{Data, GID, PID, LID}
 Returns a copy of the diagonal elements on the calling processor
 
-    leftScale!(matrix::Impl{Data, GID, PID, LID}, X::AbstractArray{Data, 1})
+    leftScale!(matrix::RowMatrix{Data, GID, PID, LID}, X::AbstractArray{Data, 1})
 Scales matrix on the left with X
 
-    rightScale!(matrix::Impl{Data, GID, PID, LID}, X::AbstractArray{Data, 1})
+    rightScale!(matrix::RowMatrix{Data, GID, PID, LID}, X::AbstractArray{Data, 1})
 Scales matrix on the right with X
 
-    pack(::RowGraph{GID, PID, LID}, exportLIDs::AbstractArray{LID, 1}, distor::Distributor{GID, PID, LID})::AbstractArray{AbstractArray{LID, 1}}
+    pack(::RowMatrix{GID, PID, LID}, exportLIDs::AbstractArray{LID, 1}, distor::Distributor{GID, PID, LID})::AbstractArray{AbstractArray{LID, 1}}
 Packs this object's data for import or export
 
 
@@ -46,24 +43,20 @@ Additionally, the following method must be implemented to fufil the operator int
 
     apply!(matrix::RowMatrix{Data, GID, PID, LID}, X::MultiVector{Data, GID, PID, LID}, Y::MultiVector{Data, GID, PID, LID}, mode::TransposeMode, alpha::Data, beta::Data)
 
-However, the following methods are implemented by redirecting the call to the matrix's graph by calling `getGraph(matrix)`.
-    domainMap(operator::RowMatrix{Data, GID, PID, LID})::BlockMap{GID, PID, LID}
-
-    rangeMap(operator::RowMatrix{Data, GID, PID, LID})::BlockMap{GID, PID, LID}
-
 `getMap(...)`, as required by SrcDistObject, is implemented by calling `getRowMap(...)`
 
 
-The following methods are currently implemented by redirecting the call to the matrix's graph by calling `getGraph(matrix)`.  It is recommended that the implmenting class implements these more efficiently.
+The following methods are currently implemented by redirecting the call to the matrix's graph by calling `getGraph(matrix)`.  It is recommended that the implmenting class implements these more efficiently if able.
 
-    isFillComplete(mat::RowMatrix)
-Whether `fillComplete(...)` has been called
+    domainMap(operator::RowMatrix{Data, GID, PID, LID})::BlockMap{GID, PID, LID}
+    rangeMap(operator::RowMatrix{Data, GID, PID, LID})::BlockMap{GID, PID, LID}
     getRowMap(mat::RowMatrix)
-Returns the BlockMap associated with the rows of this matrix
+    getColMap(mat::RowMatrix)
+Returns the BlockMap associated with varies sets of indices
+    isFillComplete(mat::RowMatrix)
+If the matrix structure is fully build.
     hasColMap(mat::RowMatrix)
 Whether the matrix has a column map
-    getColMap(mat::RowMatrix)
-Returns the BlockMap associated with the columns of this matrix
     isGloballyIndexed(mat::RowMatrix)
 Whether the matrix stores indices with global indexes
     getGlobalNumRows(mat::RowMatrix)
@@ -84,6 +77,8 @@ Returns the number of entries on the local processor in the given row
 Returns the number of entries on the local processor in the given row
     getGlobalNumDiags(mat::RowMatrix)
 Returns the number of diagonal elements across all processors
+    getLocalNumDiags(mat::RowMatrix)
+Returns the number of diagonal element on the calling processor
     getGlobalMaxNumRowEntries(mat::RowMatrix)
 Returns the maximum number of row entries across all processors
     getLocalMaxNumRowEntries(mat::RowMatrix)
@@ -253,14 +248,14 @@ getNumEntriesInLocalRow(mat::RowMatrix, localRow) = getNumEntriesInLocalRow(getG
 
 Returns the number of diagonal elements across all processors
 """
-getGlobalNumDiags(mat::RowMatrix, gRow) = getGlobalNumDiags(getGraph(mat), gRow)
+getGlobalNumDiags(mat::RowMatrix) = getGlobalNumDiags(getGraph(mat))
 
 """
     getLocalNumDiags(mat::RowMatrix)
 
 Returns the number of diagonal element on the calling processor
 """
-getLocalNumDiags(mat::RowMatrix, lRow) = getLocalNumDiags(getGraph(mat), lRow)
+getLocalNumDiags(mat::RowMatrix) = getLocalNumDiags(getGraph(mat))
 
 """
     getGlobalMaxNumRowEntries(mat::RowMatrix)

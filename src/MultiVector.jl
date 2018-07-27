@@ -25,7 +25,7 @@ end
 
 Creates a new MultiVector based on the given map
 """
-function MultiVector{Data, GID, PID, LID}(map::BlockMap{GID, PID, LID}, numVecs::Integer, zeroOut=true) where {Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer}
+function MultiVector{Data}(map::BlockMap{GID, PID, LID}, numVecs::Integer, zeroOut=true) where {Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer}
     localLength = numMyElements(map)
     if zeroOut
         data = zeros(Data, (localLength, numVecs))
@@ -267,7 +267,7 @@ function copyAndPermute(source::MultiVector{Data, GID, PID, LID},
 
         #don't need to sort permute[To/From]LIDs, since the orders match
         for i in 1:numPermuteIDs
-            target.data[permutToLIDs[i], j] = source.data[permuteFromLIDs[i], j]
+            target.data[permuteToLIDs[i], j] = source.data[permuteFromLIDs[i], j]
         end
     end
 end

@@ -110,12 +110,12 @@ SerialMapTests(map, map2, diffMap)
 
 
 ## constructor 3 ##
-BlockMap(Int[], commVal)
-BlockMap([1], commVal)
+BlockMap(0, Int[], commVal)
+BlockMap(1, [1], commVal)
 
-map = BlockMap([1, 2, 3, 4, 5], commVal)
-map2 = BlockMap([1, 2, 3, 4, 5], commVal)
-diffMap = BlockMap([1, 2, 3, 4, 5, 6], commVal)
+map = BlockMap(5, [1, 2, 3, 4, 5], commVal)
+map2 = BlockMap(5, [1, 2, 3, 4, 5], commVal)
+diffMap = BlockMap(6, [1, 2, 3, 4, 5, 6], commVal)
 #@SerialMapTests
 SerialMapTests(map, map2, diffMap)
 

@@ -41,21 +41,8 @@ basicTest(impor[1])
 basicTest(impor[1])
 
 
-# import using Dicts
-@test_warn debugregex impor[1] = Import(srcMap, desMap, Dict{Symbol, Any}())
-basicTest(impor[1])
-@test_warn debugregex impor[1] = Import(srcMap, desMap, Nullable{AbstractArray{Bool}}(), Dict{Symbol, Any}())
-basicTest(impor[1])
-
-
 # basic export
 @test_warn debugregex expor[1] = Export(srcMap, desMap)
 basicTest(expor[1])
 @test_warn debugregex expor[1] = Export(srcMap, desMap, Nullable{AbstractArray{Bool}}())
-basicTest(expor[1])
-
-#export using Dicts
-@test_warn debugregex expor[1] = Export(srcMap, desMap, Dict{Symbol, Any}())
-basicTest(expor[1])
-@test_warn debugregex expor[1] = Export(srcMap, desMap, Nullable{AbstractArray{Bool}}(), Dict{Symbol, Any}())
 basicTest(expor[1])

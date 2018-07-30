@@ -120,7 +120,7 @@ function scale(vect::MultiVector, alpha::Number)
 end
 
 
-function Base.scale!(vect::MultiVector, alpha::AbstractArray{<:Number})
+function Base.scale!(vect::MultiVector, alpha::AbstractArray{<:Number, 1})
     for v = 1:vect.numVectors
         @inbounds vect.data[:, v] *= alpha[v]
     end
@@ -132,7 +132,7 @@ end
 
 Scales each column of a copy of the mulitvector and returns the copy
 """
-function scale(vect::MultiVector, alpha::T) where T <: AbstractArray{<:Number}
+function scale(vect::MultiVector, alpha::AbstractArray{<:Number, 1})
     scale!(copy(vect), alpha)
 end
 

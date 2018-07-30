@@ -1,7 +1,7 @@
 n = 4
 
 srcMap = BlockMap(4*n, comm)
-desMap = BlockMap(collect((1:n) + n*(pid%4)), comm)
+desMap = BlockMap(n*numProc(comm), collect((1:n) + n*(pid%4)), comm)
 
 function basicMPITest(impor)
     if isa(impor, Import)
@@ -34,22 +34,8 @@ basicMPITest(impor[1])
 @test_warn debugregex impor[1] = Import(srcMap, desMap, Nullable{AbstractArray{UInt16}}())
 basicMPITest(impor[1])
 
-
-# import using Dicts
-@test_warn debugregex impor[1] = Import(srcMap, desMap, Dict{Symbol, Any}())
-basicMPITest(impor[1])
-@test_warn debugregex impor[1] = Import(srcMap, desMap, Nullable{AbstractArray{UInt16}}(), Dict{Symbol, Any}())
-basicMPITest(impor[1])
-
-
 # basic export
 @test_warn debugregex expor[1] = Export(srcMap, desMap)
 basicMPITest(expor[1])
 @test_warn debugregex expor[1] = Export(srcMap, desMap, Nullable{AbstractArray{UInt16}}())
-basicMPITest(expor[1])
-
-#export using Dicts
-@test_warn debugregex expor[1] = Export(srcMap, desMap, Dict{Symbol, Any}())
-basicMPITest(expor[1])
-@test_warn debugregex expor[1] = Export(srcMap, desMap, Nullable{AbstractArray{UInt16}}(), Dict{Symbol, Any}())
 basicMPITest(expor[1])

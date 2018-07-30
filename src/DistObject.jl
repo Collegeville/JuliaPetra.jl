@@ -177,6 +177,8 @@ function doTransfer(source, target, cm::CombineMode,
 
     releaseViews(source)
     releaseViews(target)
+
+    nothing
 end
 
 """

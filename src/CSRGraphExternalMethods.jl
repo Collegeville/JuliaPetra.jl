@@ -8,8 +8,8 @@ getRowMap(graph::CSRGraph) = graph.rowMap
 getColMap(graph::CSRGraph) = get(graph.colMap)
 getDomainMap(graph::CSRGraph) = get(graph.domainMap)
 getRangeMap(graph::CSRGraph) = get(graph.rangeMap)
-getImporter(graph::CSRGraph) = get(graph.importer)
-getExporter(graph::CSRGraph) = get(graph.exporter)
+getImporter(graph::CSRGraph) = graph.importer
+getExporter(graph::CSRGraph) = graph.exporter
 
 getGlobalNumRows(graph::CSRGraph) = numGlobalElements(getRowMap(graph))
 getGlobalNumCols(graph::CSRGraph) = numGlobalElements(getColMap(graph))

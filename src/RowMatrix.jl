@@ -39,11 +39,26 @@ Scales matrix on the right with X
 Packs this object's data for import or export
 
 
-Additionally, the following method must be implemented to fufil the operator interface:
-
-    apply!(matrix::RowMatrix{Data, GID, PID, LID}, X::MultiVector{Data, GID, PID, LID}, Y::MultiVector{Data, GID, PID, LID}, mode::TransposeMode, alpha::Data, beta::Data)
 
 `getMap(...)`, as required by SrcDistObject, is implemented by calling `getRowMap(...)`
+
+`apply!(...)`, as required by Operator, is implemented, but can be optimized by overrideing the following method
+    localApply(Y::MultiVector, A::RowMatrix, X::MultiVector, ::TransposeMode, α::Data, β::Data)
+Does the computations for `Y = β⋅Y + α⋅A⋅X`, `X` and `Y` match the row map and column map, depending on the transpose mode
+
+The following methods are currently implemented as no-ops, but can be overridden to improve performance.
+
+    setColumnMapMultiVector(::RowMatrix{Data, GID, PID, LID}, ::Nullable{MultiVector{Data, GID, PID, LID}})
+Caches a `MultiVector` that uses the matrix's column map.
+
+    getColumnMapMultiVector(::RowMatrix{Data, GID, PID, LID})::Nullable{MultiVector{Data, GID, PID, LID}}
+Fetches any cached `MultiVector` that uses the matrix's column map.
+
+    setRowMapMultiVector(::RowMatrix{Data, GID, PID, LID}, ::Nullable{MultiVector{Data, GID, PID, LID}})
+Caches a `MultiVector` that uses the matrix's row map.
+
+    getRowMapMultiVector(::RowMatrix{Data, GID, PID, LID})::Nullable{MultiVector{Data, GID, PID, LID}}
+Fetches any cached `MultiVector` that uses the matrix's row map.
 
 
 The following methods are currently implemented by redirecting the call to the matrix's graph by calling `getGraph(matrix)`.  It is recommended that the implmenting class implements these more efficiently if able.
@@ -53,10 +68,13 @@ The following methods are currently implemented by redirecting the call to the m
     getRowMap(mat::RowMatrix)
     getColMap(mat::RowMatrix)
 Returns the BlockMap associated with varies sets of indices
-    isFillComplete(mat::RowMatrix)
-If the matrix structure is fully build.
     hasColMap(mat::RowMatrix)
 Whether the matrix has a column map
+    getImporter(mat::RowMatrix)
+    getExporter(mat::RowMatrix)
+Returns the `Import` and `Export` objects for the matrix
+    isFillComplete(mat::RowMatrix)
+Whether the matrix structure is fully build.
     isGloballyIndexed(mat::RowMatrix)
 Whether the matrix stores indices with global indexes
     getGlobalNumRows(mat::RowMatrix)
@@ -151,6 +169,251 @@ function getLocalDiagCopyWithoutOffsetsNotFillComplete(A::RowMatrix{Data, GID, P
 end
 
 
+"""
+    createColumnMapMultiVector(mat::RowMatrix, x::MultiVector; force=false)::Nullable{MultiVector}
+
+Returns a `Nullable` `MultiVector` that uses the matrix's column map
+If `getImporter(mat)` is null (ie a trivial import), then the multivector will only be created if `force` is true.
+"""
+function createColumnMapMultiVector(mat::RowMatrix{Data, GID, PID, LID}, X::MultiVector{Data, GID, PID, LID}; force = false) where {Data, GID, PID, LID}
+    if !isFillComplete(mat)
+        throw(InvalidStateError("Can only call createColumnMapMultiVector if the matrix is fill active"))
+    end
+    if !hasColMap(mat)
+        throw(InvalidStateError("Can only call createColumnMapMultiVector with a matrix that has a column map"))
+    end
+
+    numVecs = numVectors(X)
+    importer = getImporter(mat)
+    colMap = getColMap(mat)
+
+    #if import object is trivial, don't need a seperate column map multivector
+    if !isnull(importer) || force
+        importMV = getColumnMapMultiVector(mat)
+        if isnull(importMV) || numVectors(get(importMV)) != numVecs
+            importMV = Nullable(MultiVector{Data}(colMap, numVecs))
+            setColumnMapMultiVector(mat, importMV)
+        end
+        importMV
+    else
+        Nullable{MultiVector{Data, GID, PID, LID}}()
+    end
+end
+
+"""
+    createRowMapMultiVector(mat::RowMatrix, x::MultiVector; force=false)::Nullable{MultiVector}
+
+Returns a `Nullable` `MultiVector` that uses the matrix's row map
+If `getExporter(mat)` is null (ie a trivial export), then the multivector will only be created if `force` is true.
+"""
+function createRowMapMultiVector(mat::RowMatrix{Data, GID, PID, LID}, Y::MultiVector{Data, GID, PID, LID}; force = false) where {Data, GID, PID, LID}
+    if !isFillComplete(mat)
+        throw(InvalidStateError("Cannot call createRowMapMultiVector if the matrix is fill active"))
+    end
+
+    numVecs = numVectors(Y)
+    exporter = getExporter(operator)
+    rowMap = getRowMap(mat)
+
+    if !isnull(exporter) || force
+        exportMV = getRowMapMultiVector(mat)
+        if isnull(exportMV) || getNumVectors(get(exportMV)) != numVecs
+            exportMV = Nullable(MultiVector{Data}(rowMap, numVecs))
+        end
+        exportMV
+    else
+        Nullable{MultiVector{Data, GID, PID, LID}}()
+    end
+end
+
+
+function apply!(Y::MultiVector{Data, GID, PID, LID},
+        operator::RowMatrix{Data, GID, PID, LID}, X::MultiVector{Data, GID, PID, LID},
+        mode::TransposeMode, alpha::Data, beta::Data) where {Data, GID, PID, LID}
+
+    const ZERO = Data(0)
+
+    if isFillActive(operator)
+        throw(InvalidStateError("Cannot call apply(...) until fillComplete(...)"))
+    end
+
+	if alpha == ZERO
+        if beta == ZERO
+            fill!(Y, ZERO)
+        elseif beta != Data(1)
+            scale!(Y, beta)
+        end
+        return Y
+    end
+
+    importer = getImporter(operator)
+    exporter = getExporter(operator)
+
+    YIsReplicated = !distributedGlobal(Y)
+    YIsOverwritted = (beta == ZERO)
+    if YIsReplicated && myPid(getComm(operator)) != 1
+        beta = ZERO
+    end
+
+    if mode == NO_TRANS
+        if isnull(importer)
+            XColMap = X
+        else
+            #need to import source multivector
+            XColMap = get(createColumnMapMultiVector(operator, X))
+            doImport(X, XColMap, get(importer), INSERT)
+        end
+
+        if !isnull(exporter)
+            YRowMap = createRowMapMultiVector(operator, Y)
+            localApply(YRowMap, operator, XColMap, NO_TRANS, alpha, ZERO)
+
+            if YIsOverwritten
+                fill!(Y, ZERO)
+            else
+                scale!(Y, beta)
+            end
+
+            doExport(YRowMap, Y, get(exporter), ADD)
+        else
+            #don't do export row Map and range map are the same
+            if XColMap === Y
+                YRowMap = createRowMapMultiVector(operator, Y; force=true)
+
+                if beta != 0
+                    copy!(YRowMap, Y)
+                end
+
+                localApply(YRowMap, operator, XColmap, NO_TRANS, alpha, ZERO)
+                copy!(Y, YRowMap)
+            else
+                localApply(Y, operator, XColMap, NO_TRANS, alpha, beta)
+            end
+        end
+    else
+        if isnull(exporter)
+            XRowMap = X
+        else
+            rowMapMV = get(createRowMapMultiVector(mat, X))
+            doImport(X, rowMapMV, get(exporter), INSERT)
+            XRowMap = rowMapMV
+        end
+
+        if !isnull(importer)
+            YColMap = createColumnMapMultiVector(mat, X)
+            localApply(get(YColMap), operator, XRowMap, mode, alpha, ZERO)
+
+            if YIsOverwritten
+                fill!(Y, ZERO)
+            else
+                scale!(Y, beta)
+            end
+            doExport(get(YColMap), Y, get(importer), ADD)
+        else
+            if XRowMap === Y
+                YCopy = copy(Y)
+                localApply(YCopy, operator, XRowMap, mode, alpha, beta)
+                copy!(Y, YCopy)
+            else
+                localApply(Y, operator, XRowMap, mode, alpha, beta)
+            end
+        end
+    end
+    if YIsReplicated
+        commReduce(Y)
+    end
+    Y
+end
+
+function localApply(Y::MultiVector{Data, GID, PID, LID},
+        A::RowMatrix{Data, GID, PID, LID}, X::MultiVector{Data, GID, PID, LID},
+        mode::TransposeMode, alpha::Data, beta::Data) where {Data, GID, PID, LID}
+
+    const rawY = Y.data
+    const rawX = X.data
+
+    # can only get a view if the indices are stored locally
+    if isLocallyIndexed(A)
+        getLocalRow = getLocalRowView
+    else
+        getLocalRow = getLocalRowCopy
+    end
+
+    if !isTransposed(mode)
+        numRows = getLocalNumRows(A)
+        for vect = LID(1):numVectors(Y)
+            for row = LID(1):numRows
+                sum::Data = Data(0)
+                @inbounds (indices, values) = getLocalRow(A, row)
+                for i in LID(1):LID(length(indices))
+                    ind::LID = indices[i]
+                    val::Data = values[i]
+                    @inbounds sum += val*rawX[ind, vect]
+                end
+                sum = applyConjugation(mode, sum*alpha)
+                @inbounds rawY[row, vect] *= beta
+                @inbounds rawY[row, vect] += sum
+            end
+        end
+    else
+        rawY[:, :] *= beta
+        numRows = getLocalNumRows(A)
+        for vect = LID(1):numVectors(Y)
+            for mRow in LID(1):numRows
+                @inbounds (indices, values) = getLocalRow(A, mRow)
+                for i in LID(1):LID(length(indices))
+                    ind::LID = indices[i]
+                    val::Data = values[i]
+                    @inbounds rawY[ind, vect] += applyConjugation(mode, alpha*rawX[mRow, vect]*val)
+                end
+            end
+        end
+    end
+
+    Y
+end
+
+
+
+#### default implementations ####
+
+"""
+    setColumnMapMultiVector(::RowMatrix{Data, GID, PID, LID}, ::Nullable{MultiVector{Data, GID, PID, LID}})
+
+Caches a `MultiVector` that uses the matrix's column map.
+"""
+function setColumnMapMultiVector(::RowMatrix{Data, GID, PID, LID}, ::Nullable{MultiVector{Data, GID, PID, LID}}) where{Data, GID, PID, LID}
+    Nullable{MultiVector{Data, GID, PID, LID}}()
+end
+
+"""
+    getColumnMapMultiVector(::RowMatrix{Data, GID, PID, LID})::Nullable{MultiVector{Data, GID, PID, LID}}
+
+Fetches any cached `MultiVector` that uses the matrix's column map.
+"""
+function getColumnMapMultiVector(::RowMatrix{Data, GID, PID, LID}) where{Data, GID, PID, LID}
+    Nullable{MultiVector{Data, GID, PID, LID}}()
+end
+
+"""
+    setRowMapMultiVector(::RowMatrix{Data, GID, PID, LID}, ::Nullable{MultiVector{Data, GID, PID, LID}})
+
+Caches a `MultiVector` that uses the matrix's row map.
+"""
+function setRowMapMultiVector(::RowMatrix{Data, GID, PID, LID}, ::Nullable{MultiVector{Data, GID, PID, LID}}) where{Data, GID, PID, LID}
+    Nullable{MultiVector{Data, GID, PID, LID}}()
+end
+
+"""
+    getRowMapMultiVector(::RowMatrix{Data, GID, PID, LID})::Nullable{MultiVector{Data, GID, PID, LID}}
+
+Fetches any cached `MultiVector` that uses the matrix's row map.
+"""
+function getRowMapMultiVector(::RowMatrix{Data, GID, PID, LID}) where{Data, GID, PID, LID}
+    Nullable{MultiVector{Data, GID, PID, LID}}()
+end
+
+
 #### default implementations using getGraph(...) ####
 """
     isFillComplete(mat::RowMatrix)
@@ -179,6 +442,20 @@ getColMap(mat::RowMatrix) = getColMap(getGraph(mat))
 Whether the container has a well-defined column map
 """
 hasColMap(mat::RowMatrix) = hasColMap(getGraph(mat))
+
+"""
+    getImporter(::RowMatrix{Data, GID, PID, LID})::Nullable{Import{GID, PID, LID}}
+
+Gets the `Import` object for the matrix
+"""
+getImporter(mat::RowMatrix) = getImporter(getGraph(mat))
+
+"""
+    getExporter(::RowMatrix{Data, GID, PID, LID})::Nullable{Export{GID, PID, LID}}
+
+Gets the `Export` object for the matrix
+"""
+getExporter(mat::RowMatrix) = getExporter(getGraph(mat))
 
 """
     isGloballyIndexed(mat::RowMatrix)

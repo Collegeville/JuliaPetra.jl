@@ -209,57 +209,6 @@ function combineGlobalValues(matrix::CSRMatrix{Data, GID, PID, LID},
     end
 end
 
-"""
-Returns a nullable object of the column map multivector
-"""
-function getColumnMapMultiVector(mat::CSRMatrix{Data, GID, PID, LID}, X::MultiVector{Data, GID, PID, LID}, force = false) where {Data, GID, PID, LID}
-    if !hasColMap(mat)
-        throw(InvalidStateError("Can only call getColumnMapMultiVector with a matrix that has a column map"))
-    end
-    if !isFillComplete(mat)
-        throw(InvalidStateError("Can only call getColumnMapMultiVector if the matrix is fill active"))
-    end
-
-    numVecs = numVectors(X)
-    importer = getGraph(mat).importer
-    colMap = getColMap(mat)
-
-    #if import object is trivial, don't need a seperate column map multivector
-    if !isnull(importer) || force
-        if isnull(mat.importMV) || numVectors(get(mat.importMV)) != numVecs
-            mat.importMV = Nullable(MultiVector{Data, GID, PID, LID}(colMap, numVecs))
-        else
-            mat.importMV
-        end
-    else
-        Nullable{MultiVector{Data, GID, PID, LID}}()
-    end
-end
-
-"""
-Returns a nullable object of the row map multivector
-"""
-function getRowMapMultiVector(mat::CSRMatrix{Data, GID, PID, LID}, Y::MultiVector{Data, GID, PID, LID}, force = false) where {Data, GID, PID, LID}
-    if !isFillComplete(mat)
-        throw(InvalidStateError("Cannot call getRowMapMultiVector wif the matrix is fill active"))
-    end
-
-    numVecs = numVectors(Y)
-    exporter = getGraph(mat).exporter
-    rowMap = getRowMap(mat)
-
-    if !isnull(exporter) || force
-        if isnull(mat.exportMV) || getNumVectors(get(map.exportMV)) != numVecs
-            mat.exportMV = Nullable(MultiVector(rowMap, numVecs))
-        else
-            mat.exportMV
-        end
-    else
-        Nullable{MultiVector{Data, GID, PID, LID}}()
-    end
-end
-
-
 #does nothing, exists only to be a parallel to CSRGraph
 computeGlobalConstants(matrix::CSRMatrix) = nothing
 
@@ -583,6 +532,17 @@ end
 
 #### External methods ####
 #TODO document external methods
+
+function setColumnMapMultiVector(mat::CSRMatrix{Data, GID, PID, LID}, mv::Nullable{MultiVector{Data, GID, PID, LID}}) where {Data, GID, PID, LID}
+    mat.importMV = mv
+end
+
+function setRowMapMultiVector(mat::CSRMatrix{Data, GID, PID, LID}, mv::Nullable{MultiVector{Data, GID, PID, LID}}) where {Data, GID, PID, LID}
+    mat.exportMV = mv
+end
+
+getColumnMapMultiVector(mat::CSRMatrix) = mat.importMV
+getRowMapMultiVector(mat::CSRMatrix) = mat.exportMV
 
 function insertGlobalValues(matrix::CSRMatrix{Data, GID, PID, LID}, globalRow::Integer,
         indices::AbstractArray{LID, 1}, values::AbstractArray{Data, 1}
@@ -1030,160 +990,6 @@ end
 
 
 #### Operator methods ####
-function apply!(Y::MultiVector{Data, GID, PID, LID},
-        operator::CSRMatrix{Data, GID, PID, LID}, X::MultiVector{Data, GID, PID, LID},
-        mode::TransposeMode, alpha::Data, beta::Data) where {Data, GID, PID, LID}
-
-    const ZERO = Data(0)
-
-    if isFillActive(operator)
-        throw(InvalidStateError("Cannot call apply(...) until fillComplete(...)"))
-    end
-
-	if alpha == ZERO
-        if beta == ZERO
-            fill!(Y, ZERO)
-        elseif beta != Data(1)
-            scale!(Y, beta)
-        end
-        return Y
-    end
-
-    if mode == NO_TRANS
-        applyNonTranspose!(Y, operator, X, alpha, beta)
-    else
-        applyTranspose!(Y, operator, X, mode, alpha, beta)
-    end
-end
-
-function applyNonTranspose!(Y::MultiVector{Data, GID, PID, LID}, operator::CSRMatrix{Data, GID, PID, LID}, X::MultiVector{Data, GID, PID, LID}, alpha::Data, beta::Data) where {Data, GID, PID, LID}
-    const ZERO = Data(0)
-
-    #These are nullable
-    importer = getGraph(operator).importer
-    exporter = getGraph(operator).exporter
-
-    #assumed to be shared by all data structures
-    resultComm = getComm(Y)
-
-    YIsOverwritten = (beta == ZERO)
-    YIsReplicated = !distributedGlobal(Y) && numProc(resultComm) != 0
-
-    #part of special case for replicated MV output
-    if YIsReplicated && myPid(resultComm) != 1
-        beta = ZERO
-    end
-
-    if isnull(importer)
-        XColMap = X
-    else
-        #need to import source multivector
-
-        XColMap = get(getColumnMapMultiVector(operator, X))
-
-        doImport(X, XColMap, get(importer), INSERT)
-    end
-
-    YRowMap = getRowMapMultiVector(operator, Y)
-    if !isnull(exporter)
-        localApply(YRowMap, operator, XColMap, NO_TRANS, alpha, ZERO)
-
-        if YIsOverwritten
-            fill!(Y, ZERO)
-        else
-            scale!(Y, beta)
-        end
-
-        doExport(YRowMap, Y, get(exporter), ADD)
-    else
-        #don't do export row Map and range map are the same
-
-        if XColMap === Y
-
-            YRowMap = getRowMapMultiVector(operator, Y, true)
-
-            if beta != 0
-                copy!(YRowMap, Y)
-            end
-
-            localApply(YRowMap, operator, XColmap, NO_TRANS, alpha, ZERO)
-            copy!(Y, YRowMap)
-        else
-            localApply(Y, operator, XColMap, NO_TRANS, alpha, beta)
-        end
-    end
-
-    if YIsReplicated
-        commReduce(Y)
-    end
-    Y
-end
-
-function applyTranspose!(Yin::MultiVector{Data, GID, PID, LID}, operator::CSRMatrix{Data, GID, PID, LID}, Xin::MultiVector{Data, GID, PID, LID}, mode::TransposeMode, alpha::Data, beta::Data) where {Data, GID, PID, LID}
-    const ZERO = Data(0)
-
-    nVects = numVectors(Xin)
-    importer = getGraph(operator).importer
-    exporter = getGraph(operator).exporter
-
-    YIsReplicated = distributedGlobal(Yin)
-    YIsOverwritted = (beta == ZERO)
-    if YIsReplicated && myPID(getComm(operator)) != 1
-        beta = ZERO
-    end
-
-    if isnull(importer)
-        X = copy(Xin)
-    else
-        X
-    end
-
-    if !isnull(importer)
-        if !isnull(operator.importMV) && getNumVectors(get(operator.importMV)) != nVects
-            operator.importMV = Nullable{MultiVector{Data, GID, PID, LID}}()
-        end
-        if isnull(operator.importMV)
-            operator.importMV = Nullable(MultiVector(getColMap(operator), nVects))
-        end
-    end
-
-    if !isnull(exporter)
-        if !isnull(operator.exportMV) && getNumVectors(get(operator.exportMV)) != nVects
-            operator.exportMV = Nullable{MultiVector{Data, GID, PID, LID}}()
-        end
-        if isnull(operator.exportMV)
-            operator.exportMV = Nullable(MultiVector(getRowMap(operator), nVects))
-        end
-    end
-
-    if !isnull(exporter)
-        doImport(Xin, get(operator.exportMV), get(exporter), INSERT)
-        X = operator.exportMV
-    end
-
-    if !isnull(importer)
-        localApply(get(operator.importMV), operator, X, mode, alpha, ZERO)
-
-        if YIsOverwritten
-            fill!(Yin, ZERO)
-        else
-            scale!(Yin, beta)
-        end
-        doExport(get(operator.importMV), Yin, get(importer), ADD)
-    else
-        if X === Yin
-            Y = copy(Yin)
-            localApply(Y, operator, X, mode, alpha, beta)
-            copy!(Yin, Y)
-        else
-            localApply(Yin, operator, X, mode, alpha, beta)
-        end
-    end
-    if YIsReplicated
-        commReduce(Yin)
-    end
-    Yin
-end
 
 TypeStability.@stable_function [(MultiVector{D, G, P, L}, CSRMatrix{D, G, P, L},
                         MultiVector{D, G, P, L}, TransposeMode, D, D)

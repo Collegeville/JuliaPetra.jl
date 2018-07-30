@@ -326,13 +326,13 @@ function makeImportExport(graph::CSRGraph{GID, PID, LID}) where {
 
     if isnull(graph.importer)
         if get(graph.domainMap) !== get(graph.colMap) && !sameAs(get(graph.domainMap), get(graph.colMap))
-            graph.importer = Import(get(graph.domainMap), get(graph.colMap), graph.plist)
+            graph.importer = Import(get(graph.domainMap), get(graph.colMap))
         end
     end
 
     if isnull(graph.exporter)
         if get(graph.rangeMap) !== graph.rowMap && !sameAs(get(graph.rangeMap), graph.rowMap)
-            graph.exporter = Export(graph.rowMap, graph.rangeMap, graph.plist)
+            graph.exporter = Export(graph.rowMap, graph.rangeMap)
         end
     end
 end

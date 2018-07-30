@@ -29,10 +29,10 @@ Gets the domain map for the graph
     getRangeMap(::RowGraph{GID, PID, LID})::BlockMap{GID, PID, LID}
 Gets the range map for the graph
 
-    getImporter(::RowGraph{GID, PID, LID})::Import{GID, PID, LID}
+    getImporter(::RowGraph{GID, PID, LID})::Nullable{Import{GID, PID, LID}}
 Gets the graph's Import object
 
-    getExporter(::RowGraph{GID, PID, LID})::Export{GID, PID, LID}
+    getExporter(::RowGraph{GID, PID, LID})::Nullable{Export{GID, PID, LID}}
 Gets the graph's Export object
 
     getGlobalNumEntries(::RowGraph{GID, PID, LID})::GID
@@ -231,16 +231,16 @@ Gets the range map for the graph
 function getRangeMap end
 
 """
-    getImporter(::RowGraph{GID, PID, LID})::Import{GID, PID, LID}
+    getImporter(::RowGraph{GID, PID, LID})::Nullable{Import{GID, PID, LID}}
 
-Gets the graph's Import object
+Gets the graph's Import object, or null if the import is trivial
 """
 function getImporter end
 
 """
-    getExporter(::RowGraph{GID, PID, LID})::Export{GID, PID, LID}
+    getExporter(::RowGraph{GID, PID, LID})::Nullable{Export{GID, PID, LID}}
 
-Gets the graph's Export object
+Gets the graph's Export object, or null if the export is trivial
 """
 function getExporter end
 

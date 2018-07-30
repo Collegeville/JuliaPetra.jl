@@ -56,8 +56,10 @@ getComm(obj) = getComm(getMap(obj))
 
 """
     doImport(target, source, importer::Import{GID, PID, LID}, cm::CombineMode)
+    doImport(target, source, importer::Nullable{Import{GID, PID, LID}}, cm::CombineMode)
 
-Import data into this object using an Import object ("forward mode")
+Import data into this object using an Import object ("forward mode").
+A null `importer` indicates a trivial import
 """
 function doImport(source, target, importer::Import{GID, PID, LID},
         cm::CombineMode) where {GID <:Integer, PID <: Integer, LID <: Integer}
@@ -66,10 +68,19 @@ function doImport(source, target, importer::Import{GID, PID, LID},
         distributor(importer), false)
 end
 
+function doImport(source, target, importer::Nullable{Import{GID, PID, LID}},
+        cm::CombineMode) where {GID <:Integer, PID <: Integer, LID <: Integer}
+    if !isnull(importer)
+        doImport(source, target, get(importer), cm)
+    end
+end
+
 """
     doExport(target, source, exporter::Export{GID, PID, LID}, cm::CombineMode)
+    doExport(target, source, exporter::Nullable{Export{GID, PID, LID}}, cm::CombineMode)
 
 Export data into this object using an Export object ("forward mode")
+A null `exporter` indicates a trivial import
 """
 function doExport(source, target,
         exporter::Export{GID, PID, LID}, cm::CombineMode) where {
@@ -79,10 +90,19 @@ function doExport(source, target,
         distributor(exporter), false)
 end
 
+function doExport(source, target, exporter::Nullable{Export{GID, PID, LID}},
+        cm::CombineMode) where {GID <:Integer, PID <: Integer, LID <: Integer}
+    if !isnull(exporter)
+        doImport(source, target, get(exporter), cm)
+    end
+end
+
 """
     doImport(source, target, exporter::Export{GID, PID, LID}, cm::CombineMode)
+    doImport(source, target, exporter::Nullable{Export{GID, PID, LID}}, cm::CombineMode)
 
-Import data into this object using an Export object ("reverse mode")
+Import data into this object using an Export object ("reverse mode").
+A null `exporter` indicates a trivial import.
 """
 function doImport(source, target,
         exporter::Export{GID, PID, LID}, cm::CombineMode) where {
@@ -92,10 +112,19 @@ function doImport(source, target,
         distributor(exporter), true)
 end
 
+function doImport(source, target, exporter::Nullable{Export{GID, PID, LID}},
+        cm::CombineMode) where {GID <:Integer, PID <: Integer, LID <: Integer}
+    if !isnull(exporter)
+        doImport(source, target, get(exporter), cm)
+    end
+end
+
 """
     doExport(source, target, importer::Import{GID, PID, LID}, cm::CombineMode)
+    doExport(source, target, importer::Nullable{Import{GID, PID, LID}}, cm::CombineMode)
 
 Export data into this object using an Import object ("reverse mode")
+A null `importer` indicates a trivial export.
 """
 function doExport(source, target,
         importer::Import{GID, PID, LID}, cm::CombineMode) where {
@@ -103,6 +132,13 @@ function doExport(source, target,
     doTransfer(source, target, cm, numSameIDs(importer), permuteToLIDs(importer),
         permuteFromLIDs(importer), remoteLIDs(importer), exportLIDs(importer),
         distributor(importer), true)
+end
+
+function doExport(source, target, importer::Nullable{Import{GID, PID, LID}},
+        cm::CombineMode) where {GID <:Integer, PID <: Integer, LID <: Integer}
+    if !isnull(importer)
+        doImport(source, target, get(importer), cm)
+    end
 end
 
 
@@ -151,7 +187,6 @@ function doTransfer(source, target, cm::CombineMode,
     #tell target to create a view of its data
     #TODO look at FIXME on line 531
     createViewsNonConst(target, readAlso)
-
 
     if numSameIDs + length(permuteToLIDs) != 0
         copyAndPermute(source, target, numSameIDs, permuteToLIDs, permuteFromLIDs)

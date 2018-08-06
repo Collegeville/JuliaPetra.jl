@@ -96,8 +96,8 @@ fillComplete(mat)
 
 
 
-Y = MultiVector(map, diagm(Data(1):2))
-X = MultiVector(map, fill(Data(2), 2, 2))
+Y = DenseMultiVector(map, diagm(Data(1):2))
+X = DenseMultiVector(map, fill(Data(2), 2, 2))
 
 @test Y === apply!(Y, mat, X, NO_TRANS, Data(3), Data(.5))
 
@@ -109,8 +109,8 @@ exp[2, :] = [72,   73]
 
 
 
-Y = MultiVector(map, diagm(Data(1):2))
-X = MultiVector(map, fill(Data(2), 2, 2)) #ensure bugs in the previous test don't affect this test
+Y = DenseMultiVector(map, diagm(Data(1):2))
+X = DenseMultiVector(map, fill(Data(2), 2, 2)) #ensure bugs in the previous test don't affect this test
 
 @test Y === apply!(Y, mat, X, TRANS, Float32(3), Float32(.5))
 

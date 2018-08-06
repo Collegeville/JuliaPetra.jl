@@ -33,7 +33,7 @@ for i = 1:numMyElts
     else
         indices = LID[myGlobalElts[i]-1, myGlobalElts[i]+1]
     end
-    
+
     insertGlobalValues(A, myGlobalElts[i], indices, values)
     insertGlobalValues(A, myGlobalElts[i], LID[myGlobalElts[i]], two)
 end
@@ -41,8 +41,8 @@ end
 fillComplete(A, map, map)
 
 
-Y = MultiVector(map, diagm(Data(1):n))
-X = MultiVector(map, fill(Data(2), n, n))
+Y = DenseMultiVector(map, diagm(Data(1):n))
+X = DenseMultiVector(map, fill(Data(2), n, n))
 
 @test Y === apply!(Y, A, X, NO_TRANS, Float32(3), Float32(.5))
 

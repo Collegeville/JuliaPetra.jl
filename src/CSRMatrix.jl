@@ -1028,8 +1028,8 @@ end
 
 #### Operator methods ####
 
-TypeStability.@stable_function [(MultiVector{D, G, P, L}, CSRMatrix{D, G, P, L},
-                        MultiVector{D, G, P, L}, TransposeMode, D, D)
+TypeStability.@stable_function [(DenseMultiVector{D, G, P, L}, CSRMatrix{D, G, P, L},
+                        DenseMultiVector{D, G, P, L}, TransposeMode, D, D)
                     for (D, G, P, L) in Base.Iterators.product(
                         [Float64, Complex64], #Data
                         [UInt64, Int64, UInt32], #GID
@@ -1041,8 +1041,8 @@ function localApply(Y::MultiVector{Data, GID, PID, LID},
         A::CSRMatrix{Data, GID, PID, LID}, X::MultiVector{Data, GID, PID, LID},
         mode::TransposeMode, alpha::Data, beta::Data) where {Data, GID, PID, LID}
 
-    const rawY = Y.data
-    const rawX = X.data
+    const rawY = getLocalArray(Y)
+    const rawX = getLocalArray(X)
 
 
     #TODO implement this better, can BLAS be used?

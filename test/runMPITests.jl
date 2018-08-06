@@ -43,8 +43,8 @@ try
             end
 
             @testset "Data MPI Tests" begin
-                include("MultiVectorTests.jl")
-                multiVectorTests(comm)
+                include("DenseMultiVectorTests.jl")
+                denseMultiVectorTests(comm)
 
                 include("CSRMatrixMPITests.jl")
             end

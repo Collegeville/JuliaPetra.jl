@@ -72,7 +72,7 @@ function leftScale!(matrix::RowMatrix{Data, GID, PID, LID}, X::MultiVector{Data,
     if numVectors(X) != 1
         throw(InvalidArgumentError("Can only scale row matrix with column vector, not multi vector"))
     end
-    leftScale!(matrix, X.data)
+    leftScale!(matrix, getLocalArray(X))
 end
 
 function rightScale!(matrix::RowMatrix{Data, GID, PID, LID}, X::MultiVector{Data, GID, PID, LID}) where {
@@ -80,7 +80,7 @@ function rightScale!(matrix::RowMatrix{Data, GID, PID, LID}, X::MultiVector{Data
     if numVectors(X) != 1
         throw(InvalidArgumentError("Can only scale row matrix with column vector, not multi vector"))
     end
-    rightScale!(matrix, X.data)
+    rightScale!(matrix, getLocalArray(X))
 end
 
 #for SrcDistObject
@@ -180,7 +180,7 @@ end
 Returns a copy of the diagonal elements on the calling processor
 """
 Base.@propagate_inbounds function getLocalDiagCopy(matrix::RowMatrix{Data, GID, PID, LID}) where {Data, GID, PID, LID}
-    copy = MultiVector{Data}(getRowMap(matrix), 1, false)
+    copy = DenseMultiVector{Data}(getRowMap(matrix), 1, false)
     getLocalDiagCopy!(copy, matrix)
     copy
 end
@@ -223,7 +223,7 @@ function createColumnMapMultiVector(mat::RowMatrix{Data, GID, PID, LID}, X::Mult
     if !isnull(importer) || force
         importMV = getColumnMapMultiVector(mat)
         if isnull(importMV) || numVectors(get(importMV)) != numVecs
-            importMV = Nullable(MultiVector{Data}(colMap, numVecs))
+            importMV = Nullable{MultiVector{Data, GID, PID, LID}}(DenseMultiVector{Data}(colMap, numVecs))
             setColumnMapMultiVector(mat, importMV)
         end
         importMV
@@ -250,7 +250,7 @@ function createRowMapMultiVector(mat::RowMatrix{Data, GID, PID, LID}, Y::MultiVe
     if !isnull(exporter) || force
         exportMV = getRowMapMultiVector(mat)
         if isnull(exportMV) || getNumVectors(get(exportMV)) != numVecs
-            exportMV = Nullable(MultiVector{Data}(rowMap, numVecs))
+            exportMV = Nullable{MultiVector{Data, GID, PID, LID}}(DenseMultiVector{Data}(rowMap, numVecs))
         end
         exportMV
     else
@@ -361,8 +361,8 @@ function localApply(Y::MultiVector{Data, GID, PID, LID},
         A::RowMatrix{Data, GID, PID, LID}, X::MultiVector{Data, GID, PID, LID},
         mode::TransposeMode, alpha::Data, beta::Data) where {Data, GID, PID, LID}
 
-    const rawY = Y.data
-    const rawX = X.data
+    const rawY = getLocalArray(Y)
+    const rawX = getLocalArray(Y)
 
     maxElts = getLocalMaxNumRowEntries(A)
     indices = Vector{LID}(maxElts)

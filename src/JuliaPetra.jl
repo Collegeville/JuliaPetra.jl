@@ -45,6 +45,7 @@ include("DistObject.jl")
 
 # Dense Data types
 include("MultiVector.jl")
+include("DenseMultiVector.jl")
 
 
 # Sparse Data types

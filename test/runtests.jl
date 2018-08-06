@@ -46,8 +46,8 @@ include("TestUtil.jl")
 
     if !noDataStructs
         @testset "Data Structure Tests" begin
-            include("MultiVectorTests.jl")
-            multiVectorTests(serialComm)
+            include("DenseMultiVectorTests.jl")
+            denseMultiVectorTests(serialComm)
 
             include("SparseRowViewTests.jl")
             include("LocalCSRGraphTests.jl")

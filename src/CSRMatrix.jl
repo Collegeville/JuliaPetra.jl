@@ -180,7 +180,7 @@ function CSRMatrix(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, L
     rowOffsets = Array{LID, 1}(size(localMatrix, 1)+1)
     row = 1
     j = 1
-    for i in 1:length(rowIndices)
+    for i in LID(1):LID(length(rowIndices))
         if rowIndices[i] > row
             row += 1
             rowOffsets[row] = i

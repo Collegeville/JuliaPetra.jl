@@ -43,8 +43,8 @@ function Base.scale!(mVect::MultiVector, alpha::Number)
     mVect
 end
 
-function Base.scale!(mVect::MultiVector, alpha::AbstractArray{<:Number, 1})
-    for v in 1:numVectors(mVect)
+function Base.scale!(mVect::MultiVector{Data, GID, PID, LID}, alpha::AbstractArray{<:Number, 1}) where {Data, GID, PID, LID}
+    for v in LID(1):numVectors(mVect)
         @inbounds getVectorView(mVect, v)[:] *= alpha[v]
     end
     mVect
@@ -65,9 +65,9 @@ function Base.dot(vect1::MultiVector{Data, GID, PID, LID}, vect2::MultiVector{Da
     data1 = getLocalArray(vect1)
     data2 = getLocalArray(vect2)
 
-    @inbounds for vect in 1:numVects
+    @inbounds for vect in LID(1):numVects
         sum = Data(0)
-        for i = 1:length
+        for i = LID(1):length
             sum += data1[i, vect]*data2[i, vect]
         end
         dotProducts[vect] = sum
@@ -76,7 +76,7 @@ function Base.dot(vect1::MultiVector{Data, GID, PID, LID}, vect2::MultiVector{Da
     sumAll(getComm(vect1), dotProducts)::Array{Data, 2}
 end
 
-function Base.norm(mVect::MultiVector{Data}, n::Real) where Data
+function Base.norm(mVect::MultiVector{Data, GID, PID, LID}, n::Real) where {Data, GID, PID, LID}
     const numVects = numVectors(mVect)
     const localVectLength = localLength(mVect)
     norms = Array{Data, 2}(1, numVects)
@@ -84,9 +84,9 @@ function Base.norm(mVect::MultiVector{Data}, n::Real) where Data
     data = getLocalArray(mVect)
 
     if n == 2
-        @inbounds for vect in 1:numVects
+        @inbounds for vect in LID(1):numVects
             sum = Data(0)
-            for i = 1:localVectLength
+            for i = LID(1):localVectLength
                 val = data[i, vect]
                 sum += val*val
             end
@@ -96,9 +96,9 @@ function Base.norm(mVect::MultiVector{Data}, n::Real) where Data
         norms = sumAll(getComm(getMap(mVect)), norms)::Matrix{Data}
         @. norms = sqrt(norms)
     else
-        @inbounds for vect in 1:numVects
+        @inbounds for vect in LID(1):numVects
             sum = Data(0)
-            for i = 1:localVectLength
+            for i = LID(1):localVectLength
                 sum += data[i, vect]^n
             end
             norms[vect] = sum
@@ -157,13 +157,13 @@ function copyAndPermute(source::MultiVector{Data, GID, PID, LID},
     numPermuteIDs = length(permuteToLIDs)
     sourceData = getLocalArray(source)
     targetData = getLocalArray(target)
-    @inbounds for vect in 1:numVectors(source)
-        for i in 1:numSameIDs
+    @inbounds for vect in LID(1):numVectors(source)
+        for i in LID(1):numSameIDs
             targetData[i, vect] = sourceData[i, vect]
         end
 
         #don't need to sort permute[To/From]LIDs, since the orders match
-        for i in 1:numPermuteIDs
+        for i in LID(1):numPermuteIDs
             targetData[permuteToLIDs[i], vect] = sourceData[permuteFromLIDs[i], vect]
         end
     end
@@ -175,9 +175,9 @@ function packAndPrepare(source::MultiVector{Data, GID, PID, LID},
             Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer}
     exports = Array{Array{Data, 1}}(length(exportLIDs))
     sourceData = getLocalArray(source)
-    for i in 1:length(exports)
+    for i in LID(1):length(exports)
         @inbounds exports[i] = Vector{Data}(numVectors(source))
-        for vect in 1:numVectors(source)
+        for vect in LID(1):numVectors(source)
             @inbounds exports[i][vect] = sourceData[exportLIDs[i], vect]
         end
     end
@@ -189,8 +189,8 @@ function unpackAndCombine(target::MultiVector{Data, GID, PID, LID},
         distor::Distributor{GID, PID, LID},cm::CombineMode) where {
             Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer}
     targetData = getLocalArray(target)
-    for i = 1:length(importLIDs)
-        for vect in 1:numVectors(target)
+    for i = LID(1):length(importLIDs)
+        for vect in LID(1):numVectors(target)
             @inbounds targetData[importLIDs[i], vect] = imports[i][vect]
         end
     end

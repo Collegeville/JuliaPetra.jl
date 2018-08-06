@@ -98,7 +98,7 @@ function getLocalDiagCopyWithoutOffsetsNotFillComplete(A::RowMatrix{Data, GID, P
     diag = MultiVector{Data, GID, PID, LID}(getRowMap(A), 1)
     diagLocal1D = getVectorView(diag, 1)
 
-    range = 1:localNumRows
+    range = LID(1):localNumRows
     for localRowIndex in range
         diagLocal1D[localRowIndex] = 0
         globalIndex = gid(localRowMap, localRowIndex)
@@ -661,8 +661,7 @@ function Base.getindex(A::RowMatrix, I::Vararg{Int, 2})
             end
         end
         (rowInds, rowVals) = getGlobalRowView(A, I[0])
-        i = 1
-        while i <= length(rowInds)
+        for i in 1:length(rowInds)
             if rowInds[i] == I[1]
                 return rowVals[i]
             end
@@ -671,8 +670,7 @@ function Base.getindex(A::RowMatrix, I::Vararg{Int, 2})
         lRow = lid(getMap(A), I[1])
         lCol = lid(getMap(A), I[2])
         (rowInds, rowVals) = getLocalRowView(A, lRow)
-        i = 1
-        while i <= length(rowInds)
+        for i in 1:length(rowInds)
             if rowInds[i] == lCol
                 return rowVals[i]
             end

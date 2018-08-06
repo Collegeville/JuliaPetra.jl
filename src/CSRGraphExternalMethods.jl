@@ -19,20 +19,22 @@ getLocalNumCols(graph::CSRGraph) = numMyElements(getColMap(graph))
 getGlobalNumEntries(graph::CSRGraph) = graph.globalNumEntries
 getLocalNumEntries(graph::CSRGraph) = graph.nodeNumEntries
 
-function getNumEntriesInGlobalRow(graph::CSRGraph{GID}, globalRow::Integer)::Integer where {GID <: Integer}
+Base.@propagate_inbounds function getNumEntriesInGlobalRow(graph::CSRGraph{GID}, globalRow::Integer)::Integer where {GID <: Integer}
     localRow = lid(graph.rowMap, GID(globalRow))
     getNumEntriesInLocalRow(graph, localRow)
 end
 
 function getNumEntriesInLocalRow(graph::CSRGraph{GID, PID, LID}, localRow::Integer)::Integer where {GID, PID, LID <: Integer}
-    if hasRowInfo(graph) && myLID(graph.rowMap, LID(localRow))
-        info = getRowInfo(graph, LID(localRow))
-        retVal = info.numEntries
-        recycleRowInfo(info)
-        retVal
-    else
-        -1
+    @boundscheck if !hasRowInfo(graph)
+        error("Row info is gone, cannot determine number of local entries in the local row $localRow")
     end
+    @boundscheck if !myLID(graph.rowMap, LID(localRow))
+        error("Row $localRow is not present in this graph")
+    end
+    info = getRowInfo(graph, LID(localRow))
+    retVal = info.numEntries
+    recycleRowInfo(info)
+    retVal
 end
 
 getGlobalNumDiags(graph::CSRGraph) = graph.globalNumDiags
@@ -51,17 +53,65 @@ isLocallyIndexed(graph::CSRGraph) = graph.indicesType == LOCAL_INDICES
 
 isFillComplete(g::CSRGraph) = g.fillComplete
 
-function getGlobalRowCopy(graph::CSRGraph{GID}, globalRow::GID)::Array{GID, 1} where {GID <: Integer}
-    Array{GID, 1}(getGlobalRowView(graph, globalRow))
+function getGlobalRowCopy!(copy::AbstractVector{<:Integer}, graph::CSRGraph{GID}, globalRow::GID) where GID
+
+    rowInfo = getRowInfoFromGlobalRow(myGraph, GID(globalRow))
+    viewRange = 1:rowInfo.numEntries
+
+    @boundscheck if rowInfo.localRow == 0
+        recycleRowInfo(rowInfo)
+        return LID(0)
+    end
+
+    numElts = rowInfo.numEntries
+
+    @inbounds if isGloballyIndexed(graph)
+        indsView = getGlobalView(myGraph, rowInfo[viewRange])
+        for i in LID(1):numElts
+            copy[i] = indsView[i]
+        end
+    else
+        colMap = getColMap(myGraph)
+        indsView = getLocalView(myGraph, rowInfo)[viewRange]
+        for i in LID(1):numElts
+            copy[i] = gid(colMap, indsView[i])
+        end
+    end
+
+    recycleRowInfo(rowInfo)
+    numElts
 end
 
-function getLocalRowCopy(graph::CSRGraph{GID, PID, LID}, localRow::LID)::Array{LID, 1} where {GID, PID, LID <: Integer}
-    Array{LID, 1}(getLocalRowView(graph, localRow))
-end
 
-function pack(source::CSRGraph{GID, PID, LID}, exportLIDs::AbstractArray{LID, 1}, distor::Distributor{GID, PID, LID})::Array{Array{LID, 1}, 1} where {GID, PID, LID}
-    srcMap = getMap(source)
-    [getGlobalRowCopy(source, gid(srcMap, lid)) for lid in exportLIDs]
+function getLocalRowCopy!(copy::AbstractVector{<:Integer},
+        graph::CSRGraph{GID, PID, LID}, localRow::LID)::LID where {GID, PID, LID}
+
+    rowInfo = getRowInfo(graph, LID(localRow))
+    viewRange = 1:rowInfo.numEntries
+
+    @boundscheck if rowInfo.localRow == 0
+        recycleRowInfo(rowInfo)
+        return LID(0)
+    end
+
+    numElts = rowInfo.numEntries
+
+    @inbounds if isLocallyIndexed(graph)
+        indsView = getLocalView(graph, rowInfo[viewRange])
+        for i in LID(1):numElts
+            copy[i] = indsView[i]
+        end
+    else
+        colMap = getColMap(graph)
+        indsView = getGlobalView(graph, rowInfo)[viewRange]
+
+        for i in LID(1):numElts
+            copy[i] = lid(colMap, indsView[i])
+        end
+    end
+
+    recycleRowInfo(rowInfo)
+    numElts
 end
 
 

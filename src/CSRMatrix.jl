@@ -1,5 +1,4 @@
 export CSRMatrix, insertGlobalValues
-#TODO export other CSRMatrix-specific symbols
 
 using TypeStability
 
@@ -533,17 +532,6 @@ end
 #### External methods ####
 #TODO document external methods
 
-function setColumnMapMultiVector(mat::CSRMatrix{Data, GID, PID, LID}, mv::Nullable{MultiVector{Data, GID, PID, LID}}) where {Data, GID, PID, LID}
-    mat.importMV = mv
-end
-
-function setRowMapMultiVector(mat::CSRMatrix{Data, GID, PID, LID}, mv::Nullable{MultiVector{Data, GID, PID, LID}}) where {Data, GID, PID, LID}
-    mat.exportMV = mv
-end
-
-getColumnMapMultiVector(mat::CSRMatrix) = mat.importMV
-getRowMapMultiVector(mat::CSRMatrix) = mat.exportMV
-
 function insertGlobalValues(matrix::CSRMatrix{Data, GID, PID, LID}, globalRow::Integer,
         indices::AbstractArray{LID, 1}, values::AbstractArray{Data, 1}
         ) where {Data, GID, PID, LID}
@@ -671,30 +659,21 @@ end
 
 #### Row Matrix functions ####
 
-isFillActive(mat::CSRMatrix) = isFillActive(mat.myGraph)
-isFillComplete(mat::CSRMatrix) = isFillComplete(mat.myGraph)
 getRowMap(mat::CSRMatrix) = mat.rowMap
 hasColMap(mat::CSRMatrix) = !isnull(mat.colMap)
 getColMap(mat::CSRMatrix) = get(mat.colMap)
-isGloballyIndexed(mat::CSRMatrix) = isGloballyIndexed(mat.myGraph)
-isLocallyIndexed(mat::CSRMatrix)  = isLocallyIndexed(mat.myGraph)
 getGraph(mat::CSRMatrix) = mat.myGraph
 
-getGlobalNumRows(mat::CSRMatrix) = getGlobalNumRows(mat.myGraph)
-getGlobalNumCols(mat::CSRMatrix) = getGlobalNumCols(mat.myGraph)
-getLocalNumRows(mat::CSRMatrix) = getLocalNumRows(mat.myGraph)
-getLocalNumCols(mat::CSRMatrix) = numCols(mat.localMatrix)
-getGlobalNumEntries(mat::CSRMatrix) = getGlobalNumEntries(mat.myGraph)
-getLocalNumEntries(mat::CSRMatrix) = getLocalNumEntries(mat.myGraph)
-getNumEntriesInGlobalRow(mat::CSRMatrix, grow) = getNumEntriesInGlobalRow(mat.myGraph, grow)
-getNumEntriesInLocalRow(mat::CSRMatrix, lrow) = getNumEntriesInLocalRow(mat.myGraph, lrow)
-getGlobalNumDiags(mat::CSRMatrix) = getGlobalNumDiags(mat.myGraph)
-getLocalNumDiags(mat::CSRMatrix) = getLocalNumDiags(mat.myGraph)
-getGlobalMaxNumRowEntries(mat::CSRMatrix) = getGlobalMaxNumRowEntries(mat.myGraph)
-getLocalMaxNumRowEntries(mat::CSRMatrix) = getLocalMaxNumRowEntries(mat.myGraph)
+function setColumnMapMultiVector(mat::CSRMatrix{Data, GID, PID, LID}, mv::Nullable{MultiVector{Data, GID, PID, LID}}) where {Data, GID, PID, LID}
+    mat.importMV = mv
+end
 
-isLowerTriangular(mat::CSRMatrix) = isLowerTriangular(mat.myGraph)
-isUpperTriangular(mat::CSRMatrix) = isUpperTriangular(mat.myGraph)
+function setRowMapMultiVector(mat::CSRMatrix{Data, GID, PID, LID}, mv::Nullable{MultiVector{Data, GID, PID, LID}}) where {Data, GID, PID, LID}
+    mat.exportMV = mv
+end
+
+getColumnMapMultiVector(mat::CSRMatrix) = mat.importMV
+getRowMapMultiVector(mat::CSRMatrix) = mat.exportMV
 
 function getGlobalRowCopy(matrix::CSRMatrix{Data, GID, PID, LID},
         globalRow::Integer
@@ -704,25 +683,57 @@ function getGlobalRowCopy(matrix::CSRMatrix{Data, GID, PID, LID},
     rowInfo = getRowInfoFromGlobalRow(myGraph, GID(globalRow))
     viewRange = 1:rowInfo.numEntries
 
+    @boundscheck if rowInfo.localRow == 0
+        recycleRowInfo(rowInfo)
+        return (GID[], Data[])
+    end
 
-    retVal = if rowInfo.localRow != 0
-        if isLocallyIndexed(myGraph)
-            colMap = getColMap(myGraph)
-            curLocalIndices = getLocalView(myGraph, rowInfo)[viewRange]
-            curGlobalIndices = @. gid(colMap, curLocalIndices)
-        else
-            curGlobalIndices = getGlobalView(myGraph, rowInfo)[viewRange]
-        end
-        curValues = getView(matrix, rowInfo)[viewRange]
-
-        (curGlobalIndices, curValues)
+    @inbounds if isLocallyIndexed(myGraph)
+        colMap = getColMap(myGraph)
+        curLocalIndices = getLocalView(myGraph, rowInfo)[viewRange]
+        curGlobalIndices = @. gid(colMap, curLocalIndices)
     else
-        (GID[], Data[])
+        curGlobalIndices = getGlobalView(myGraph, rowInfo)[viewRange]
+    end
+    @inbounds curValues = getView(matrix, rowInfo)[viewRange]
+
+    retVal = (curGlobalIndices, curValues)
+    recycleRowInfo(rowInfo)
+    retVal
+end
+
+function getGlobalRowCopy!(copy::Tuple{<:AbstractVector{<:Integer}, <:AbstractVector{Data}},
+        matrix::CSRMatrix{Data, GID, PID, LID}, localRow::GID)::LID where {Data, GID, PID, LID}
+    myGraph = matrix.myGraph
+
+    rowInfo = getRowInfoFromGlobalRow(myGraph, GID(globalRow))
+    viewRange = 1:rowInfo.numEntries
+
+    @boundscheck if rowInfo.localRow == 0
+        recycleRowInfo(rowInfo)
+        return LID(0)
+    end
+
+    numElts = rowInfo.numEntries
+
+    @inbounds dataView = getView(matrix, rowInfo)[viewRange]
+    @inbounds if isGloballyIndexed(myGraph)
+        indsView = getGlobalView(myGraph, rowInfo[viewRange])
+        for i in LID(1):numElts
+            copy[1][i] = indsView[i]
+            copy[2][i] = dataView[i]
+        end
+    else
+        colMap = getColMap(myGraph)
+        indsView = getLocalView(myGraph, rowInfo)[viewRange]
+        for i in LID(1):numElts
+            copy[1][i] = gid(colMap, indsView[i])
+            copy[2][i] = dataView[i]
+        end
     end
 
     recycleRowInfo(rowInfo)
-
-    retVal
+    numElts
 end
 
 
@@ -733,28 +744,62 @@ function getLocalRowCopy(matrix::CSRMatrix{Data, GID, PID, LID},
     myGraph = matrix.myGraph
 
     rowInfo = getRowInfo(myGraph, LID(localRow))
-    viewRange = 1:rowInfo.numEntries
 
-    retVal = if rowInfo.localRow != 0
-        if isLocallyIndexed(myGraph)
-            curLocalIndices = Array{LID}(getLocalView(myGraph, rowInfo)[viewRange])
-        else
-            colMap = getColMap(myGraph)
-            curGlobalIndices = getGlobalView(myGraph, rowInfo)[viewRange]
-            curLocalIndices = @. lid(colMap, curLocalIndices)
-        end
-        curValues = Array{Data}(getView(matrix, rowInfo)[viewRange])
-
-        (curLocalIndices, curValues)
-    else
-        (LID[], Data[])
+    @boundscheck if rowInfo.localRow == 0
+        recycleRowInfo(rowInfo)
+        return (LID[], Data[])
     end
 
-    recycleRowInfo(rowInfo)
+    viewRange = 1:rowInfo.numEntries
 
+    @inbounds if isLocallyIndexed(myGraph)
+        curLocalIndices = Array{LID}(getLocalView(myGraph, rowInfo)[viewRange])
+    else
+        colMap = getColMap(myGraph)
+        curGlobalIndices = getGlobalView(myGraph, rowInfo)[viewRange]
+        curLocalIndices = @. lid(colMap, curLocalIndices)
+    end
+    @inbounds curValues = Array{Data}(getView(matrix, rowInfo)[viewRange])
+
+    retVal = (curLocalIndices, curValues)
+    recycleRowInfo(rowInfo)
     retVal
 end
 
+function getLocalRowCopy!(copy::Tuple{<:AbstractVector{<:Integer}, <:AbstractVector{Data}},
+        matrix::CSRMatrix{Data, GID, PID, LID}, localRow::LID)::LID where {Data, GID, PID, LID}
+    myGraph = matrix.myGraph
+
+    rowInfo = getRowInfo(myGraph, LID(localRow))
+    viewRange = 1:rowInfo.numEntries
+
+    @boundscheck if rowInfo.localRow == 0
+        recycleRowInfo(rowInfo)
+        return LID(0)
+    end
+
+    numElts = rowInfo.numEntries
+
+    @inbounds dataView = getView(matrix, rowInfo)[viewRange]
+    @inbounds if isLocallyIndexed(myGraph)
+        indsView = getLocalView(myGraph, rowInfo[viewRange])
+        for i in LID(1):numElts
+            copy[1][i] = indsView[i]
+            copy[2][i] = dataView[i]
+        end
+    else
+        colMap = getColMap(myGraph)
+        indsView = getGlobalView(myGraph, rowInfo)[viewRange]
+
+        for i in LID(1):numElts
+            copy[1][i] = lid(colMap, indsView[i])
+            copy[2][i] = dataView[i]
+        end
+    end
+
+    recycleRowInfo(rowInfo)
+    numElts
+end
 
 function getGlobalRowView(matrix::CSRMatrix{Data, GID, PID, LID},
         globalRow::Integer
@@ -824,45 +869,45 @@ TypeStability.@stable_function [(CSRMatrix{D, G, P, L}, L)
                         [UInt32, Int32]) #LID
 ] RegexDict((r"rowValues", Any)) begin
 
-function getLocalRowViewPtr end
+    function getLocalRowViewPtr end
 
-Base.@propagate_inbounds @inline function getLocalRowViewPtr(
-        matrix::CSRMatrix{Data, GID, PID, LID}, localRow::LID
-        )::Tuple{Ptr{LID}, Ptr{Data}, LID} where {Data, GID, PID, LID}
-    row = LID(localRow)
-    const graph = matrix.myGraph
+    Base.@propagate_inbounds @inline function getLocalRowViewPtr(
+            matrix::CSRMatrix{Data, GID, PID, LID}, localRow::LID
+            )::Tuple{Ptr{LID}, Ptr{Data}, LID} where {Data, GID, PID, LID}
+        row = LID(localRow)
+        const graph = matrix.myGraph
 
-    if getProfileType(graph) == STATIC_PROFILE
-        if (@debug) && !hasRowInfo(graph)
-            error("Row Info was deleted, but is still needed")
-        end
-        offset1D = graph.rowOffsets[row]
-        numEntries = (length(graph.numRowEntries) == 0 ?
-                    graph.rowOffsets[row+1] - offset1D
-                    : graph.numRowEntries[row])
-        if numEntries > 0
-            indicesPtr = pointer(graph.localIndices1D, offset1D)
-            rowValues = matrix.localMatrix.values
-            if rowValues isa SubArray{Data, 1, Vector{Data}, Tuple{UnitRange{LID}}, true}
-                valuesPtr = pointer(rowValues.parent, offset1D + rowValues.indexes[1].start)
-            elseif rowValues isa Vector{Data}
-                #else should be Vector, but assert anyways
-                valuesPtr = pointer(rowValues, offset1D)
-            else
-                error("localMatrix.values is of unsupported type $(typeof(rowValues)).")
+        if getProfileType(graph) == STATIC_PROFILE
+            if (@debug) && !hasRowInfo(graph)
+                error("Row Info was deleted, but is still needed")
             end
+            offset1D = graph.rowOffsets[row]
+            numEntries = (length(graph.numRowEntries) == 0 ?
+                        graph.rowOffsets[row+1] - offset1D
+                        : graph.numRowEntries[row])
+            if numEntries > 0
+                indicesPtr = pointer(graph.localIndices1D, offset1D)
+                rowValues = matrix.localMatrix.values
+                if rowValues isa SubArray{Data, 1, Vector{Data}, Tuple{UnitRange{LID}}, true}
+                    valuesPtr = pointer(rowValues.parent, offset1D + rowValues.indexes[1].start)
+                elseif rowValues isa Vector{Data}
+                    #else should be Vector, but assert anyways
+                    valuesPtr = pointer(rowValues, offset1D)
+                else
+                    error("localMatrix.values is of unsupported type $(typeof(rowValues)).")
+                end
 
-            return (indicesPtr, valuesPtr, numEntries)
-        else
-            return (C_NULL, C_NULL, 0)
+                return (indicesPtr, valuesPtr, numEntries)
+            else
+                return (C_NULL, C_NULL, 0)
+            end
+        else #dynamic profile
+            indices = graph.localIndices2D[row]
+            values = matrix.values2D[row]
+
+            return (pointer(indices, 0), pointer(values, 0), length(indices))
         end
-    else #dynamic profile
-        indices = graph.localIndices2D[row]
-        values = matrix.values2D[row]
-
-        return (pointer(indices, 0), pointer(values, 0), length(indices))
     end
-end
 end
 
 
@@ -939,14 +984,6 @@ function copyAndPermute(source::RowMatrix{Data, GID, PID, LID},
         end
         combineGlobalValues(target, targetGID, rowInds, rowVals, INSERT)
     end
-end
-
-#TODO move this to RowMatrix.
-#DECSION make a packable trait to encompassRowMatrix and RowGraph? as sources, checkSizes handles matching pairs of objects
-function packAndPrepare(source::RowMatrix{Data, GID, PID, LID},
-        target::CSRMatrix{Data, GID, PID, LID}, exportLIDs::AbstractArray{LID, 1},
-        distor::Distributor{GID, PID, LID})::AbstractArray where {Data, GID, PID, LID}
-    pack(source, exportLIDs, distor)
 end
 
 function pack(source::CSRMatrix{Data, GID, PID, LID}, exportLIDs::AbstractArray{LID, 1},

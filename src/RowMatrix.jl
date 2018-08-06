@@ -3,41 +3,33 @@ export SrcDistRowMatrix, DistRowMatrix, RowMatrix
 export isFillActive, isLocallyIndexed
 export getGraph, getGlobalRowCopy, getLocalRowCopy, getGlobalRowView, getLocalRowView, getLocalDiagCopy, leftScale!, rightScale!
 
-#DECISION are any other mathmatical operations needed?
-
 """
 RowMatrix is the base type for all row oriented Petra matrices.
 RowMatrix fufils both the Operator and DistObject interfaces.
 
-All subtypes must have the following methods, with Impl standing in for the subtype:
-
-    getGraph(mat::RowMatrix)
+    getGraph(mat::RowMatrix)::RowGraph
 Returns the graph that represents the structure of the row matrix
 
-    getGlobalRowCopy(matrix::RowMatrix{Data, GID, PID, LID}, globalRow::Integer)::Tuple{AbstractArray{GID, 1}, Array{Data, 1}}
-Returns a copy of the given row using global indices
+    getLocalRowCopy!(copy::Tuple{<:AbstractVector{<:Integer}, <:AbstractVector{Data}}, matrix::RowMatrix{Data, GID, PID, LID}, localRow::LID)::Integer
+Copies the given row into the provided arrays and returns the number of elements in that row using local indices
 
-    getLocalRowCopy(matrix::RowMatrix{Data, GID, PID, LID},localRow::Integer)::Tuple{AbstractArray{LID, 1}, AbstractArray{Data, 1}}
-Returns a copy of the given row using local indices
+    getGlobalRowCopy!(copy::Tuple{<:AbstractVector{<:Integer}, <:AbstractVector{Data}}, matrix::RowMatrix{Data, GID, PID, LID}, globalRow::GID)::Integer
+Copies the given row into the provided arrays and returns the number of elements in that row using global indices
 
-    getGlobalRowView(matrix::RowMatrix{Data, GID, PID, LID},globalRow::Integer)::Tuple{AbstractArray{GID, 1}, AbstractArray{Data, 1}}
+    getGlobalRowView(matrix::RowMatrix{Data, GID, PID, LID}, globalRow::Integer)::Tuple{AbstractArray{GID, 1}, AbstractArray{Data, 1}}
 Returns a view to the given row using global indices
 
     getLocalRowView(matrix::RowMatrix{Data, GID, PID, LID},localRow::Integer)::Tuple{AbstractArray{GID, 1}, AbstractArray{Data, 1}}
 Returns a view to the given row using local indices
 
-    getLocalDiagCopy(matrix::RowMatrix{Data, GID, PID, LID})::MultiVector{Data, GID, PID, LID}
-Returns a copy of the diagonal elements on the calling processor
+    getLocalDiagCopy!(copy::MultiVector{Data, GID, PID, LID}, matrix::RowMatrix{Data, GID, PID, LID})::MultiVector{Data, GID, PID, LID}
+Copies the local diagonal into the given `MultiVector` then returns the `MultiVector`
 
     leftScale!(matrix::RowMatrix{Data, GID, PID, LID}, X::AbstractArray{Data, 1})
 Scales matrix on the left with X
 
     rightScale!(matrix::RowMatrix{Data, GID, PID, LID}, X::AbstractArray{Data, 1})
 Scales matrix on the right with X
-
-    pack(::RowMatrix{GID, PID, LID}, exportLIDs::AbstractArray{LID, 1}, distor::Distributor{GID, PID, LID})::AbstractArray{AbstractArray{LID, 1}}
-Packs this object's data for import or export
-
 
 
 `getMap(...)`, as required by SrcDistObject, is implemented by calling `getRowMap(...)`
@@ -61,61 +53,24 @@ Caches a `MultiVector` that uses the matrix's row map.
 Fetches any cached `MultiVector` that uses the matrix's row map.
 
 
-The following methods are currently implemented by redirecting the call to the matrix's graph by calling `getGraph(matrix)`.  It is recommended that the implmenting class implements these more efficiently if able.
-
-    domainMap(operator::RowMatrix{Data, GID, PID, LID})::BlockMap{GID, PID, LID}
-    rangeMap(operator::RowMatrix{Data, GID, PID, LID})::BlockMap{GID, PID, LID}
-    getRowMap(mat::RowMatrix)
-    getColMap(mat::RowMatrix)
-Returns the BlockMap associated with varies sets of indices
-    hasColMap(mat::RowMatrix)
-Whether the matrix has a column map
-    getImporter(mat::RowMatrix)
-    getExporter(mat::RowMatrix)
-Returns the `Import` and `Export` objects for the matrix
-    isFillComplete(mat::RowMatrix)
-Whether the matrix structure is fully build.
-    isGloballyIndexed(mat::RowMatrix)
-Whether the matrix stores indices with global indexes
-    getGlobalNumRows(mat::RowMatrix)
-Returns the number of rows across all processors
-    getGlobalNumCols(mat::RowMatrix)
-Returns the number of columns across all processors
-    getLocalNumRows(mat::RowMatrix)
-Returns the number of rows on the calling processor
-    getLocalNumCols(mat::RowMatrix)
-Returns the number of columns on the calling processor
-    getGlobalNumEntries(mat::RowMatrix)
-Returns the number of entries across all processors
-    getLocalNumEntries(mat::RowMatrix)
-Returns the number of entries on the calling processor
-    getNumEntriesInGlobalRow(mat::RowMatrix, globalRow)
-Returns the number of entries on the local processor in the given row
-    getNumEntriesInLocalRow(mat::RowMatrix, localRow)
-Returns the number of entries on the local processor in the given row
-    getGlobalNumDiags(mat::RowMatrix)
-Returns the number of diagonal elements across all processors
-    getLocalNumDiags(mat::RowMatrix)
-Returns the number of diagonal element on the calling processor
-    getGlobalMaxNumRowEntries(mat::RowMatrix)
-Returns the maximum number of row entries across all processors
-    getLocalMaxNumRowEntries(mat::RowMatrix)
-Returns the maximum number of row entries on the calling processor
-    isLowerTriangular(mat::RowMatrix)
-Whether the matrix is lower triangular
-    isUpperTriangular(mat::RowMatrix)
-Whether the matrix is upper triangular
+Some pre-implemented methods can be optimized by providing specialized implementations
+`apply!`, as mentioned above
+All `RowMatrix` methods that are also implemented by `RowGraph` are implemented using `getGraph`.
+`pack` is implemented using `getLocalRowCopy`
+`getGlobalRowCopy!` is implemented by calling `getLocalRowCopy!` and remapping the values using `gid(::BlockMap, ::Integer)`
 """
 abstract type RowMatrix{Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer} <: AbstractArray{Data, 2}
 end
 
 #REVIEW look into requiring A_mul_B! instead and having apply! call that
 
+isFillActive(matrix::RowMatrix) = !isFillComplete(matrix)
+isLocallyIndexed(matrix::RowMatrix) = !isGloballyIndexed(matrix)
 
 function leftScale!(matrix::RowMatrix{Data, GID, PID, LID}, X::MultiVector{Data, GID, PID, LID}) where {
         Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer}
     if numVectors(X) != 1
-        throw(InvalidArgumentError("Can only scale CSR matrix with column vector, not multi vector"))
+        throw(InvalidArgumentError("Can only scale row matrix with column vector, not multi vector"))
     end
     leftScale!(matrix, X.data)
 end
@@ -123,13 +78,10 @@ end
 function rightScale!(matrix::RowMatrix{Data, GID, PID, LID}, X::MultiVector{Data, GID, PID, LID}) where {
         Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer}
     if numVectors(X) != 1
-        throw(InvalidArgumentError("Can only scale CSR matrix with column vector, not multi vector"))
+        throw(InvalidArgumentError("Can only scale row matrix with column vector, not multi vector"))
     end
     rightScale!(matrix, X.data)
 end
-
-isFillActive(matrix::RowMatrix) = !isFillComplete(matrix)
-isLocallyIndexed(matrix::RowMatrix) = !isGloballyIndexed(matrix)
 
 #for SrcDistObject
 getMap(matrix::RowMatrix) = getRowMap(matrix)
@@ -168,6 +120,86 @@ function getLocalDiagCopyWithoutOffsetsNotFillComplete(A::RowMatrix{Data, GID, P
     diag
 end
 
+"""
+    getGlobalRowCopy(matrix::RowMatrix{Data, GID, PID, LID}, globalRow::Integer)::Tuple{AbstractArray{GID, 1}, AbstractArray{Data, 1}}
+
+Returns a copy of the given row using global indices
+"""
+Base.@propagate_inbounds function getGlobalRowCopy(matrix::RowMatrix{Data, GID, PID, LID}, globalRow::Integer) where {Data, GID, PID, LID}
+    numEntries = getNumEntriesInGlobalRow(matrix, globalRow)
+    copy = (Vector{GID}(numEntries), Vector{Data}(numEntries))
+    getGlobalRowCopy!(copy, matrix, globalRow)
+    copy
+end
+
+"""
+    getLocalRowCopy(matrix::RowMatrix{Data, GID, PID, LID}, localRow::Integer)::Tuple{AbstractArray{LID, 1}, AbstractArray{Data, 1}}
+
+Returns a copy of the given row using local indices
+"""
+Base.@propagate_inbounds function getLocalRowCopy(matrix::RowMatrix{Data, GID, PID, LID}, localRow::Integer
+        )::Tuple{AbstractArray{LID, 1}, AbstractArray{Data, 1}} where {Data, GID, PID, LID}
+    numEntries = getNumEntriesInGlobalRow(matrix, localRow)
+    copy = (Vector{LID}(numEntries), Vector{Data}(numEntries))
+    getLocalRowCopy!(copy, matrix, localRow)
+    copy
+end
+
+"""
+    getGlobalRowCopy!(copy::Tuple{<:AbstractVector{<:Integer}, <:AbstractVector{Data}}, matrix::RowMatrix{Data, GID, PID, LID}, globalRow::Integer)::Integer
+
+Copies the given row into the provided arrays and returns the number of elements in that row using global indices
+"""
+Base.@propagate_inbounds function getGlobalRowCopy!(copy::Tuple{<:AbstractVector{<:Integer}, <:AbstractVector{Data}},
+            matrix::RowMatrix{Data, GID}, globalRow::Integer) where {Data, GID}
+    getGlobalRowCopy!(copy, matrix, GID(globalRow))
+end
+
+Base.@propagate_inbounds function getGlobalRowCopy!(copy::Tuple{<:AbstractVector{<:Integer}, <:AbstractVector{Data}},
+            matrix::RowMatrix{Data, GID}, globalRow::GID) where {Data, GID}
+    rowMap = getRowMap(matrix)
+    numElts = getLocalRowCopy!(copy, matrix, lid(rowMap, globalRow))
+    inds = copy[1]
+    @. inds = gid(rowMap, inds)
+    numElts
+end
+
+"""
+    getLocalRowCopy!(copy::Tuple{<:AbstractVector{LID}, <:AbstractVector{Data}}, matrix::RowMatrix{Data, GID, PID, LID}, localRow::Integer)::Integer
+
+Copies the given row into the provided arrays and returns the number of elements in that row using local indices
+"""
+Base.@propagate_inbounds function getLocalRowCopy!(copy::Tuple{<:AbstractVector{LID}, <:AbstractVector{Data}},
+            matrix::RowMatrix{Data, GID, PID, LID}, localRow::Integer) where {Data, GID, PID, LID}
+    getLocalRowCopy!(copy, matrix, LID(localRow))
+end
+
+"""
+    getLocalDiagCopy(matrix::RowMatrix{Data, GID, PID, LID})::MultiVector{Data, GID, PID, LID}
+
+Returns a copy of the diagonal elements on the calling processor
+"""
+Base.@propagate_inbounds function getLocalDiagCopy(matrix::RowMatrix{Data, GID, PID, LID}) where {Data, GID, PID, LID}
+    copy = MultiVector{Data}(getRowMap(matrix), 1, false)
+    getLocalDiagCopy!(copy, matrix)
+    copy
+end
+
+function packAndPrepare(source::RowMatrix{Data, GID, PID, LID},
+        target::RowMatrix{Data, GID, PID, LID}, exportLIDs::AbstractArray{LID, 1},
+        distor::Distributor{GID, PID, LID})::AbstractArray where {Data, GID, PID, LID}
+    pack(source, exportLIDs, distor)
+end
+
+"""
+    pack(::RowMatrix{Data, GID, PID, LID}, exportLIDs::AbstractVector{LID}, distor::Distributor{GID, PID, LID})::AbstractArray{Tuple{AbstractVector{GID}, AbstractVector{Data}}}
+Packs this object's data for import or export
+"""
+function pack(source::RowMatrix{Data, GID, PID, LID}, exportLIDs::AbstractVector{LID},
+        distor::Distributor{GID, PID, LID})::AbstractArray{Tuple{AbstractVector{GID}, AbstractVector{Data}}} where{Data, GID, PID, LID}
+    srcMap = getMap(source)
+    map(lid->getGlobalRowCopy(source, gid(srcMap, lid)), exportLIDs)
+end
 
 """
     createColumnMapMultiVector(mat::RowMatrix, x::MultiVector; force=false)::Nullable{MultiVector}
@@ -196,7 +228,7 @@ function createColumnMapMultiVector(mat::RowMatrix{Data, GID, PID, LID}, X::Mult
         end
         importMV
     else
-        Nullable{MultiVector{Data, GID, PID, LID}}()
+        Nullable{MultiVector{Data, GID, PID,D}}()
     end
 end
 
@@ -332,23 +364,20 @@ function localApply(Y::MultiVector{Data, GID, PID, LID},
     const rawY = Y.data
     const rawX = X.data
 
-    # can only get a view if the indices are stored locally
-    if isLocallyIndexed(A)
-        getLocalRow = getLocalRowView
-    else
-        getLocalRow = getLocalRowCopy
-    end
+    maxElts = getLocalMaxNumRowEntries(A)
+    indices = Vector{LID}(maxElts)
+    values = Vector{LID}(maxElts)
 
     if !isTransposed(mode)
         numRows = getLocalNumRows(A)
         for vect = LID(1):numVectors(Y)
-            for row = LID(1):numRows
+            @inbounds for row = LID(1):numRows
                 sum::Data = Data(0)
-                @inbounds (indices, values) = getLocalRow(A, row)
-                for i in LID(1):LID(length(indices))
+                numElts = getLocalRowCopy!((indices, values), A, row)
+                for i in LID(1):numElts
                     ind::LID = indices[i]
                     val::Data = values[i]
-                    @inbounds sum += val*rawX[ind, vect]
+                    sum += val*rawX[ind, vect]
                 end
                 sum = applyConjugation(mode, sum*alpha)
                 @inbounds rawY[row, vect] *= beta
@@ -359,12 +388,12 @@ function localApply(Y::MultiVector{Data, GID, PID, LID},
         rawY[:, :] *= beta
         numRows = getLocalNumRows(A)
         for vect = LID(1):numVectors(Y)
-            for mRow in LID(1):numRows
-                @inbounds (indices, values) = getLocalRow(A, mRow)
-                for i in LID(1):LID(length(indices))
+            @inbounds for mRow in LID(1):numRows
+                numElts = getLocalRowCopy!((indices, values), A, row)
+                for i in LID(1):numElts
                     ind::LID = indices[i]
                     val::Data = values[i]
-                    @inbounds rawY[ind, vect] += applyConjugation(mode, alpha*rawX[mRow, vect]*val)
+                    rawY[ind, vect] += applyConjugation(mode, alpha*rawX[mRow, vect]*val)
                 end
             end
         end
@@ -511,14 +540,14 @@ getLocalNumEntries(mat::RowMatrix) = getLocalNumEntries(getGraph(mat))
 
 Returns the number of entries on the local processor in the given row
 """
-getNumEntriesInGlobalRow(mat::RowMatrix, globalRow) = getNumEntriesInGlobalRow(getGraph(mat), globalRow)
+Base.@propagate_inbounds getNumEntriesInGlobalRow(mat::RowMatrix, globalRow) = getNumEntriesInGlobalRow(getGraph(mat), globalRow)
 
 """
     getNumEntriesInLocalRow(mat::RowMatrix, localRow)
 
 Returns the number of entries on the local processor in the given row
 """
-getNumEntriesInLocalRow(mat::RowMatrix, localRow) = getNumEntriesInLocalRow(getGraph(mat), localRow)
+Base.@propagate_inbounds getNumEntriesInLocalRow(mat::RowMatrix, localRow) = getNumEntriesInLocalRow(getGraph(mat), localRow)
 
 """
     getGlobalNumDiags(mat::RowMatrix)
@@ -562,16 +591,6 @@ Whether the matrix is upper triangular
 """
 isUpperTriangular(mat::RowMatrix) = isUpperTriangular(getGraph(mat))
 
-"""
-    pack(::RowMatrix{GID, PID, LID}, exportLIDs::AbstractArray{LID, 1}, distor::Distributor{GID, PID, LID})::AbstractArray{AbstractArray{GID, 1}, AbstractArray{Data, 1}}
-
-Packs this object's data for import or export
-"""
-function pack(mat::RowMatrix{Data, GID, PID, LID}, exportLIDs::AbstractArray{LID, 1},
-        distor::Distributor{GID, PID, LID}) where {Data, GID, PID, LID}
-    throw(InvalidStateError("No pack implementation for objects of type $(typeof(mat))"))
-end
-
 
 getDomainMap(mat::RowMatrix) = getDomainMap(getGraph(mat))
 getRangeMap(mat::RowMatrix) = getRangeMap(getGraph(mat))
@@ -585,20 +604,6 @@ getRangeMap(mat::RowMatrix) = getRangeMap(getGraph(mat))
 Returns the graph that represents the structure of the row matrix
 """
 function getGraph end
-
-"""
-    getGlobalRowCopy(matrix::RowMatrix{Data, GID, PID, LID}, globalRow::Integer)::Tuple{AbstractArray{GID, 1}, AbstractArray{Data, 1}}
-
-Returns a copy of the given row using global indices
-"""
-function getGlobalRowCopy end
-
-"""
-    getLocalRowCopy(matrix::RowMatrix{Data, GID, PID, LID},localRow::Integer)::Tuple{AbstractArray{LID, 1}, AbstractArray{Data, 1}}
-
-Returns a copy of the given row using local indices
-"""
-function getLocalRowCopy end
 
 """
     getGlobalRowView(matrix::RowMatrix{Data, GID, PID, LID},globalRow::Integer)::Tuple{AbstractArray{GID, 1}, AbstractArray{Data, 1}}
@@ -615,21 +620,21 @@ Returns a view to the given row using local indices
 function getLocalRowView end
 
 """
-    getLocalDiagCopy(matrix::RowMatrix{Data, GID, PID, LID})::MultiVector{Data, GID, PID, LID}
+    getLocalDiagCopy!(copy::MultiVector{Data, GID, PID, LID}, matrix::RowMatrix{Data, GID, PID, LID})::MultiVector{Data, GID, PID, LID}
 
-Returns a copy of the diagonal elements on the calling processor
+Copies the local diagonal into the given `MultiVector` then returns the `MultiVector`
 """
-function getLocalDiagCopy end
+function getLocalDiagCopy! end
 
 """
-    leftScale!(matrix::Impl{Data, GID, PID, LID}, X::AbstractArray{Data})
+    leftScale!(matrix::RowMatrix{Data, GID, PID, LID}, X::AbstractArray{Data})
 
 Scales matrix on the left with X
 """
 function leftScale! end
 
 """
-    rightScale!(matrix::Impl{Data, GID, PID, LID}, X::AbstractArray{Data})
+    rightScale!(matrix::RowMatrix{Data, GID, PID, LID}, X::AbstractArray{Data})
 
 Scales matrix on the right with X
 """

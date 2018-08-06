@@ -1,6 +1,36 @@
 export Operator
 export getDomainMap, getRangeMap, apply!, apply
+export TransposeMode, NO_TRANS, TRANS, CONJ_TRANS, isTransposed, applyConjugation
 
+
+
+"""
+Tells JuliaPetra to use the transpose or conjugate transpose of the matrix
+"""
+@enum TransposeMode NO_TRANS=1 TRANS=2 CONJ_TRANS=3
+
+"""
+    isTransposed(mode::TransposeMode)::Bool
+
+Checks whether the given TransposeMode is transposed
+"""
+@inline isTransposed(mode::TransposeMode) = mode != NO_TRANS
+
+"""
+    applyConjugation(mode::TraseposeMode, val)
+
+If mode is `CONJ_TRANS`, the take the conjugate.
+Otherwise, just return the value.
+"""
+function applyConjugation(mode::TransposeMode, val)
+    if mode == CONJ_TRANS
+        conj(val)
+    else
+        val
+    end
+end
+
+applyConjugation(mode::TransposeMode, val::Real) = val
 
 """
 Operator is a description of all types that have a specific set of methods.

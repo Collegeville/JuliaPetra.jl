@@ -1,4 +1,4 @@
-export Directory
+export Directory, getDirectoryEntries, gidsAllUniquelyOwned
 
 # methods and docs based straight off Epetra_Directory to match Comm
 
@@ -22,3 +22,22 @@ gidsAllUniquelyOwned(directory::DirectoryImpl)
 """
 abstract type Directory{GID <: Integer, PID <:Integer, LID <: Integer}
 end
+
+
+#### required methods documentation stubs ####
+
+"""
+    getDirectoryEntries(directory, map::BlockMap{GID, PID, LID}, globalEntries::AbstractArray{GID}, high_rank_sharing_procs::Bool)::Tuple{AbstractArray{PID}, AbstractArray{LID}}
+
+Returns processor and local id information for non-local map entries.  Returns a tuple containing
+1. an Array of processors owning the global ID's in question
+2. an Array of local IDs of the global on the owning processor
+"""
+function getDirectoryEntries end
+
+"""
+    gidsAllUniquelyOwned(directory)
+
+Returns true if all GIDs appear on just one processor
+"""
+function gidsAllUniquelyOwned end

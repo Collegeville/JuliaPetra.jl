@@ -1,4 +1,24 @@
 export CSRGraph
+export IndexType, LOCAL_INDICES, GLOBAL_INDICES
+export StorageStatus, STORAGE_2D, STORAGE_1D_UNPACKED, STORAGE_1D_PACKED
+export ProfileType, STATIC_PROFILE, DYNAMIC_PROFILE
+
+
+"""
+Can be used to differentiate global and local indices
+"""
+@enum IndexType LOCAL_INDICES GLOBAL_INDICES
+
+"""
+Status of the graph's or matrix's storage, when not in
+a fill-complete state.
+"""
+@enum StorageStatus STORAGE_2D STORAGE_1D_UNPACKED STORAGE_1D_PACKED
+
+"""
+Allocation profile for matrix/graph entries
+"""
+@enum ProfileType STATIC_PROFILE DYNAMIC_PROFILE
 
 #TODO document the type and constructors
 

@@ -30,6 +30,10 @@ end
 try
     @testset "MPI Tests" begin
         try
+            @testset "Util Tests" begin
+                include("UtilsTests.jl")
+            end
+            
             @testset "Comm MPI Tests" begin
                 include("MPICommTests.jl")
                 include("MPIBlockMapTests.jl")

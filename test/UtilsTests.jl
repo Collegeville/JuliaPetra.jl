@@ -1,4 +1,9 @@
 
+
+#test with debug mode enabled
+@test true == @macroexpand JuliaPetra.@debug
+
+#computeOffsets
 rowPtrs = Array{Int, 1}(30)
 JuliaPetra.computeOffsets(rowPtrs, 9)
 @test collect(1:9:9*30) == rowPtrs

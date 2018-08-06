@@ -25,8 +25,7 @@ include("TestUtil.jl")
 
     if !noUtil
         @testset "Util Tests" begin
-            include("MacroTests.jl")
-            include("ComputeOffsetsTests.jl")
+            include("UtilsTests.jl")
         end
     end
 

@@ -5,10 +5,10 @@ export BasicDirectory
 Creates a BasicDirectory, which implements the methods of Directory with
 basic implmentations
 """
-type BasicDirectory{GID <: Integer, PID <:Integer, LID <: Integer} <: Directory{GID, PID, LID}
+mutable struct BasicDirectory{GID <: Integer, PID <:Integer, LID <: Integer} <: Directory{GID, PID, LID}
     map::BlockMap{GID, PID, LID}
 
-    directoryMap::Nullable{BlockMap}
+    directoryMap::Union{BlockMap, Nothing}
 
     procList::Vector{PID}
     procListLists::Vector{Vector{PID}}
@@ -21,7 +21,7 @@ type BasicDirectory{GID <: Integer, PID <:Integer, LID <: Integer} <: Directory{
     function BasicDirectory{GID, PID, LID}(map::BlockMap{GID, PID, LID}) where {GID, PID, LID}
 
         if !(distributedGlobal(map))
-            new(map, Nullable{BlockMap}(), [], [], numProc(getComm(map))!=1, [], [])
+            new(map, nothing, [], [], numProc(getComm(map))!=1, [], [])
         elseif linearMap(map)
             commObj = getComm(map)
 
@@ -30,10 +30,10 @@ type BasicDirectory{GID <: Integer, PID <:Integer, LID <: Integer} <: Directory{
 
             entryOnMultipleProcs = length(Set(allMinGIDs)) != length(allMinGIDs)
 
-            new(map, Nullable{BlockMap}(), [], [], entryOnMultipleProcs, [], allMinGIDs)
+            new(map, nothing, [], [], entryOnMultipleProcs, [], allMinGIDs)
         else
             generateContent(
-                new(map, Nullable{BlockMap}(), [], [], false, [], []),
+                new(map, nothing, [], [], false, [], []),
                 map)
         end
     end
@@ -49,13 +49,13 @@ function generateContent(dir::BasicDirectory{GID, PID, LID}, map::BlockMap{GID, 
     dirNumGlobalElements = maxAllGID - minAllGID + 1
 
     directoryMap = BlockMap(dirNumGlobalElements, minAllGID, commObj)
-    dir.directoryMap = Nullable(directoryMap)
+    dir.directoryMap = directoryMap
 
     dirNumMyElements = numMyElements(dir.directoryMap)
 
     if dirNumMyElements > 0
-        dir.procList = Array{PID}(dirNumMyElements)
-        dir.localIndexList = Array{LID}(dirNumMyElements)
+        dir.procList = Vector{PID}(undef, dirNumMyElements)
+        dir.localIndexList = Vector{LID}(undef, dirNumMyElements)
 
         fill!(dir.procList, -1)
         fill!(dir.localIndexList, -1)
@@ -91,8 +91,8 @@ function generateContent(dir::BasicDirectory{GID, PID, LID}, map::BlockMap{GID, 
             if dir.procList[currLID] != proc
                 if dir.procListLists == []
                     numProcLists = numMyElements(directoryMap)
-                    procListLists = Array{Array{PID}}(numProcLists)
-                    fill!(procListLists, [])
+                    procListLists = Vector{Vector{PID}}(undef, numProcLists)
+                    fill!(procListLists, PID[])
                 end
 
                 l = procListLists[currLID]
@@ -122,8 +122,8 @@ end
 function getDirectoryEntries(directory::BasicDirectory{GID, PID, LID}, map::BlockMap{GID, PID, LID}, globalEntries::AbstractVector{GID},
         high_rank_sharing_procs::Bool)::Tuple{Vector{PID}, Vector{LID}} where GID <: Integer where PID <: Integer where LID <: Integer
     numEntries = length(globalEntries)
-    procs = Vector{PID}(numEntries)
-    localEntries = Vector{LID}(numEntries)
+    procs = Vector{PID}(undef, numEntries)
+    localEntries = Vector{LID}(undef, numEntries)
 
     if !distributedGlobal(map)
         myPIDVal = myPid(getComm(map))

@@ -1,17 +1,25 @@
 export MultiVector
 export localLength, globalLength, numVectors
-export scale
+export scale, scale!
 export getVectorView, getVectorCopy, getLocalArray
 export commReduce
 
+using LinearAlgebra
+
+# otherwise, the use is forced to import LinearAlgebra
+export dot, norm, copyto!
+
+# need to add methods to these functions
+import LinearAlgebra: dot, norm
+import Base: copyto!
 
 """
 Required methods:
 
     getMap(::MultiVector)
-    localLength(::MultiVector)
     numVectors(::MultiVector)
     getLocalArray(::MultiVector{Data})::AbstractMatrix{Data}
+    similar(::MultiVector{Data})
 
 `commReduce(::MultiVector)` may need to be overridden if `getLocallArray(multiVector)` doesn't return a type useable by `sumAll`.
 """
@@ -38,19 +46,19 @@ function Base.fill!(mVect::MultiVector, values)
     mVect
 end
 
-function Base.scale!(mVect::MultiVector, alpha::Number)
-    scale!(getLocalArray(mVect), alpha)
+function scale!(mVect::MultiVector, alpha::Number)
+    rmul!(getLocalArray(mVect), alpha)
     mVect
 end
 
-function Base.scale!(mVect::MultiVector{Data, GID, PID, LID}, alpha::AbstractArray{<:Number, 1}) where {Data, GID, PID, LID}
+function scale!(mVect::MultiVector{Data, GID, PID, LID}, alpha::AbstractArray{<:Number, 1}) where {Data, GID, PID, LID}
     for v in LID(1):numVectors(mVect)
         @inbounds getVectorView(mVect, v)[:] *= alpha[v]
     end
     mVect
 end
 
-function Base.dot(vect1::MultiVector{Data, GID, PID, LID}, vect2::MultiVector{Data, GID, PID, LID}
+function dot(vect1::MultiVector{Data, GID, PID, LID}, vect2::MultiVector{Data, GID, PID, LID}
         )::AbstractArray{Data, 2} where {Data, GID, PID, LID}
     numVects = numVectors(vect1)
     length = localLength(vect1)
@@ -60,7 +68,7 @@ function Base.dot(vect1::MultiVector{Data, GID, PID, LID}, vect2::MultiVector{Da
     @boundscheck if length != localLength(vect2)
         throw(InvalidArgumentError("Vectors must have the same length to take the dot product of them"))
     end
-    dotProducts = Array{Data, 2}(1, numVects)
+    dotProducts = Array{Data, 2}(undef, 1, numVects)
 
     data1 = getLocalArray(vect1)
     data2 = getLocalArray(vect2)
@@ -76,10 +84,10 @@ function Base.dot(vect1::MultiVector{Data, GID, PID, LID}, vect2::MultiVector{Da
     sumAll(getComm(vect1), dotProducts)::Array{Data, 2}
 end
 
-function Base.norm(mVect::MultiVector{Data, GID, PID, LID}, n::Real) where {Data, GID, PID, LID}
-    const numVects = numVectors(mVect)
-    const localVectLength = localLength(mVect)
-    norms = Array{Data, 2}(1, numVects)
+function norm(mVect::MultiVector{Data, GID, PID, LID}, n::Real) where {Data, GID, PID, LID}
+    numVects = numVectors(mVect)
+    localVectLength = localLength(mVect)
+    norms = Array{Data, 2}(undef, 1, numVects)
 
     data = getLocalArray(mVect)
 
@@ -138,7 +146,7 @@ Gets a copy of the requested column vector(s) in this MultiVector
 """
 function getVectorCopy(mVect::MultiVector{Data}, column)::Array{Data} where {Data}
     view = getVectorView(mVect, column)
-    copy!(Array{Data}(size(view)), view)
+    copyto!(Array{Data}(undef, size(view)), view)
 end
 
 #### DistObject Interface ####
@@ -173,10 +181,10 @@ function packAndPrepare(source::MultiVector{Data, GID, PID, LID},
         target::MultiVector{Data, GID, PID, LID}, exportLIDs::AbstractArray{LID, 1},
         distor::Distributor{GID, PID, LID})::Array where {
             Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer}
-    exports = Array{Array{Data, 1}}(length(exportLIDs))
+    exports = Array{Array{Data, 1}}(undef, length(exportLIDs))
     sourceData = getLocalArray(source)
     for i in LID(1):length(exports)
-        @inbounds exports[i] = Vector{Data}(numVectors(source))
+        @inbounds exports[i] = Vector{Data}(undef, numVectors(source))
         for vect in LID(1):numVectors(source)
             @inbounds exports[i][vect] = sourceData[exportLIDs[i], vect]
         end
@@ -200,10 +208,12 @@ end
 
 ### Julia Array API ###
 
+Base.eltype(::MultiVector{Data}) where Data = Data
+
 Base.size(A::MultiVector) = (Int(globalLength(A)), Int(numVectors(A)))
 
 #TODO this might break for funky maps, however indices needs to return a unit range
-Base.indices(A::MultiVector) = (minMyGID(A.map):maxMyGID(A.map), 1:numVectors(A))
+Base.axes(A::MultiVector) = (minMyGID(A.map):maxMyGID(A.map), 1:numVectors(A))
 
 function Base.getindex(A::MultiVector, row::Integer, col::Integer)
     @boundscheck begin
@@ -287,27 +297,31 @@ function ==(A::MultiVector, B::MultiVector)
     minAll(getComm(A), localEquality)
 end
 
+struct MultiVectorBroadcastStyle <: Broadcast.AbstractArrayStyle{2} end
+Base.BroadcastStyle(::Type{<:MultiVector}) = MultiVectorBroadcastStyle()
+Base.BroadcastStyle(::MultiVectorBroadcastStyle, ::Broadcast.AbstractArrayStyle) = MultiVectorBroadcastStyle
 
-function Base.Broadcast.promote_containertype(::Type{<: MultiVector}, ::Type{<: MultiVector})
-    MultiVector
+
+function Base.similar(bc::Broadcast.Broadcasted{MultiVectorBroadcastStyle}, ::Type{ElType}) where ElType
+    mv = find_mv(bc)
+    #TODO support other MultiVectors to broadcast into?
+    #TODO support mixed Data
+    DenseMultiVector{eltype(mv)}(getMap(mv), numVectors(mv), false)
 end
-function Base.Broadcast.promote_containertype(::Type{Any}, ::Type{<: MultiVector})
-    MultiVector
-end
-function Base.Broadcast.promote_containertype(::Type{<: MultiVector}, ::Type{Any})
-    MultiVector
-end
-function Base.Broadcast._containertype(::Type{<:MultiVector})
-    MultiVector
-end
-function Base.Broadcast.broadcast_indices(::Type{<: MultiVector}, vect)
-    1:localLength(vect), 1:numVectors(vect)
-end
-@inline function Base.Broadcast.broadcast_c(f, ::Type{<:MultiVector}, a...)
-    Base.Broadcast_c(f, Array, map(mv->if isa(mv, MultiVector) getLocalArray(mv) else mv end, a)...)
-end
-@inline function Base.Broadcast.broadcast!(f, C::MultiVector, A...)
-    broadcast!(f, getLocalArray(C), map(mv->if isa(mv, MultiVector) getLocalArray(mv) else mv end, A)...)
+
+"`A = find_mv(As)` returns the first MultiVector among the arguments."
+find_mv(bc::Base.Broadcast.Broadcasted) = find_mv(bc.args)
+find_mv(args::Tuple) = find_mv(find_mv(args[1]), Base.tail(args))
+find_mv(x) = x
+find_mv(a::MultiVector, rest) = a
+find_mv(::Any, rest) = find_mv(rest)
+
+
+@inline function copyto!(dest::MultiVector, bc::Broadcast.Broadcasted{MultiVectorBroadcastStyle})
+    flattened = Broadcast.flatten(bc)
+    args = map(mv->if isa(mv, MultiVector) getLocalArray(mv) else mv end, flattened.args)
+    broadcast!(flattened.f, args)
+    flattened.args[1]
 end
 
 

@@ -25,11 +25,11 @@ function Import(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID}
 
     importData = ImportExportData(source, target)
 
-    if @debug
-        info("$(myPid(getComm(source))): Import ctor expert\n")
+    if @is_debug_mode
+        @info "$(myPid(getComm(source))): Import ctor expert\n"
     end
 
-    const remoteLIDs = JuliaPetra.remoteLIDs(importData)
+    remoteLIDs = JuliaPetra.remoteLIDs(importData)
 
     if !userRemotePIDGID
         empty!(remoteGIDs)
@@ -56,8 +56,8 @@ function Import(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID}
     permute!(remoteGIDs, order)
     permute!(remoteLIDs, order)
 
-    exportPIDs = Array{PID, 1}(length(userExportPIDs))
-    exportLIDs = Array{PID, 1}(length(userExportPIDs))
+    exportPIDs = Array{PID, 1}(undef, length(userExportPIDs))
+    exportLIDs = Array{PID, 1}(undef, length(userExportPIDs))
 
     #need the funcitons with these names, not the variables
     JuliaPetra.remoteLIDs(importData, remoteLIDs)
@@ -82,24 +82,24 @@ function Import(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID}
     Import(importData)
 end
 
-function Import(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID}, remotePIDs::Nullable{AbstractArray{PID}}=Nullable{AbstractArray{PID}}()) where {GID <: Integer, PID <: Integer, LID <: Integer}
+function Import(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID}, remotePIDs::Union{AbstractArray{PID}, Nothing}=nothing) where {GID <: Integer, PID <: Integer, LID <: Integer}
 
-    if @debug
-        info("$(myPid(getComm(source))): Import ctor\n")
+    if @is_debug_mode
+        @info "$(myPid(getComm(source))): Import ctor\n"
     end
 
-    const impor = Import{GID, PID, LID}(ImportExportData(source, target))
+    impor = Import{GID, PID, LID}(ImportExportData(source, target))
 
-    const remoteGIDs = setupSamePermuteRemote(impor)
+    remoteGIDs = setupSamePermuteRemote(impor)
 
-    if @debug
-        info("$(myPid(getComm(source))): Import ctor: setupSamePermuteRemote done\n")
+    if @is_debug_mode
+        @info "$(myPid(getComm(source))): Import ctor: setupSamePermuteRemote done\n"
     end
     if distributedGlobal(source)
         setupExport(impor, remoteGIDs, remotePIDs)
     end
-    if @debug
-        info("$(myPid(getComm(source))): Import ctor: done\n")
+    if @is_debug_mode
+        @info "$(myPid(getComm(source))): Import ctor: done\n"
     end
 
     impor
@@ -111,7 +111,7 @@ function setupSamePermuteRemote(impor::Import{GID, PID, LID}) where {GID <: Inte
 
     data = impor.importData
 
-    remoteGIDs = Array{GID, 1}(0)
+    remoteGIDs = Array{GID, 1}(undef, 0)
 
     getIDSources(data, remoteGIDs)
 
@@ -127,15 +127,15 @@ end
 
 
 function getIDSources(data, remoteGIDs, useRemotes=true)
-    const source = sourceMap(data)
-    const target = targetMap(data)
+    source = sourceMap(data)
+    target = targetMap(data)
 
-    const sourceGIDs = myGlobalElements(source)
-    const targetGIDs = myGlobalElements(target)
+    sourceGIDs = myGlobalElements(source)
+    targetGIDs = myGlobalElements(target)
 
-    const numSrcGIDs = length(sourceGIDs)
-    const numTgtGIDs = length(targetGIDs)
-    const numGIDs = min(numSrcGIDs, numTgtGIDs)
+    numSrcGIDs = length(sourceGIDs)
+    numTgtGIDs = length(targetGIDs)
+    numGIDs = min(numSrcGIDs, numTgtGIDs)
 
     numSameGIDs = 1
     while numSameGIDs <= numGIDs && sourceGIDs[numSameGIDs] == targetGIDs[numSameGIDs]
@@ -144,14 +144,14 @@ function getIDSources(data, remoteGIDs, useRemotes=true)
     numSameGIDs -= 1
     numSameIDs(data, numSameGIDs)
 
-    const permuteToLIDs = JuliaPetra.permuteToLIDs(data)
-    const permuteFromLIDs = JuliaPetra.permuteFromLIDs(data)
-    const remoteLIDs = JuliaPetra.remoteLIDs(data)
+    permuteToLIDs = JuliaPetra.permuteToLIDs(data)
+    permuteFromLIDs = JuliaPetra.permuteFromLIDs(data)
+    remoteLIDs = JuliaPetra.remoteLIDs(data)
 
 
     for tgtLID = (numSameGIDs+1):numTgtGIDs
-        const curTargetGID = targetGIDs[tgtLID]
-        const srcLID = lid(source, curTargetGID)
+        curTargetGID = targetGIDs[tgtLID]
+        srcLID = lid(source, curTargetGID)
         if srcLID != 0
             push!(permuteToLIDs, tgtLID)
             push!(permuteFromLIDs, srcLID)
@@ -162,14 +162,14 @@ function getIDSources(data, remoteGIDs, useRemotes=true)
     end
 end
 
-function setupExport(impor::Import{GID, PID, LID}, remoteGIDs::AbstractArray{GID}, userRemotePIDs::Nullable{AbstractArray{PID}}) where {GID <: Integer, PID <: Integer, LID <: Integer}
+function setupExport(impor::Import{GID, PID, LID}, remoteGIDs::AbstractArray{GID}, userRemotePIDs::Union{AbstractArray{PID}, Nothing}) where {GID <: Integer, PID <: Integer, LID <: Integer}
     data = impor.importData
-    const source = sourceMap(impor)
+    source = sourceMap(impor)
 
-    useRemotePIDs = !isnull(userRemotePIDs)
+    useRemotePIDs = userRemotePIDs != nothing
 
     # Sanity Checks
-    if useRemotePIDs && length(get(userRemotePIDs)) != length(remoteGIDs)
+    if useRemotePIDs && length(userRemotePIDs) != length(remoteGIDs)
         throw(InvalidArgumentError("remotePIDs must either be null " *
                 "or match the size of remoteGIDs."))
     end
@@ -178,10 +178,10 @@ function setupExport(impor::Import{GID, PID, LID}, remoteGIDs::AbstractArray{GID
     missingGID = 0
 
     if !useRemotePIDs
-        newRemotePIDs = Array{PID, 1}(length(remoteGIDs))
-        if @debug
-            info("$(myPid(getComm(source))): setupExport(Import): about to call " *
-                "getRemoteIndexList on sourceMap\n")
+        newRemotePIDs = Array{PID, 1}(undef, length(remoteGIDs))
+        if @is_debug_mode
+            @info "$(myPid(getComm(source))): setupExport(Import): about to call " *
+                "getRemoteIndexList on sourceMap\n"
         end
         (remoteProcIDs, remoteLIDs) = remoteIDList(source, remoteGIDs)
         for e in remoteLIDs
@@ -190,7 +190,7 @@ function setupExport(impor::Import{GID, PID, LID}, remoteGIDs::AbstractArray{GID
             end
         end
     else
-        remoteProcIDs = get(userRemotePIDs)
+        remoteProcIDs = userRemotePIDs
     end
 
     #line 688
@@ -259,8 +259,8 @@ function setupExport(impor::Import{GID, PID, LID}, remoteGIDs::AbstractArray{GID
         end
     end
 
-    if @debug
-        info("$(myPid(getComm(source))): setupExport: done\n")
+    if @is_debug_mode
+        @info "$(myPid(getComm(source))): setupExport: done\n"
     end
 end
 

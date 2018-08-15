@@ -1,7 +1,7 @@
 
 graph = LocalCSRGraph{UInt16, UInt32}()
-@test Array{UInt16, 1}(0) == graph.entries
-@test Array{UInt32, 1}(0) == graph.rowMap
+@test Array{UInt16, 1}(undef, 0) == graph.entries
+@test Array{UInt32, 1}(undef, 0) == graph.rowMap
 @test 0 == numRows(graph)
 @test_throws InvalidArgumentError maxEntry(graph)
 @test_throws InvalidArgumentError minEntry(graph)

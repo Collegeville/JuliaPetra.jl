@@ -2,7 +2,7 @@
 
 function SerialMapTests(map::BlockMap{Int, Int, Int}, map2::BlockMap{Int, Int, Int}, diffMap::BlockMap{Int, Int, Int})
 #    quote
-        mapCopy = BlockMap{Int, Int, Int}(map)
+        mapCopy = BlockMap{Int, Int, Int}(map.data)
 
         @test uniqueGIDs(map)
 

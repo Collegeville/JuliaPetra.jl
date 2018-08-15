@@ -1,5 +1,6 @@
 
 import MPI
+using Serialization
 
 export MPIDistributor
 
@@ -40,16 +41,15 @@ mutable struct MPIDistributor{GID <: Integer, PID <: Integer, LID <: Integer} <:
 
     maxSendLength::GID
     totalRecvLength::GID
-    tag::GID
 
     request::Vector{MPI.Request}
     status::Vector{MPI.Status}
 
     #sendArray::Array{UInt8}
 
-    planReverse::Nullable{MPIDistributor{GID, PID, LID}}
+    planReverse::Union{MPIDistributor{GID, PID, LID}, Nothing}
 
-    importObjs::Nullable{Vector{Vector{UInt8}}}
+    importObjs::Union{Vector{Vector{UInt8}}, Nothing}
 
     #never seem to be used
     #lastRoundBytesSend::Integer
@@ -57,8 +57,8 @@ mutable struct MPIDistributor{GID <: Integer, PID <: Integer, LID <: Integer} <:
 
     function MPIDistributor(comm::MPIComm{GID, PID, LID}) where GID <: Integer where PID <: Integer where LID <: Integer
         new{GID, PID, LID}(comm, [], [], [], [], [], [], false, [], [], [], [], [],
-            0, 0, 0, 0, 0, 0, 0, [], [],  Nullable{MPIDistributor}(),
-            Nullable{Array{UInt8}}())
+            0, 0, 0, 0, 0, 0, [], [],  nothing,
+            nothing)
     end
 end
 
@@ -71,8 +71,6 @@ function createSendStructure(dist::MPIDistributor{GID, PID, LID}, pid::PID,
     numExports = length(exportPIDs)
     dist.numExports = numExports
 
-    #starts = Array{Integer}(nProcs + 1)
-    #fill!(starts, 0)
     starts = zeros(GID, nProcs+1)
 
     nactive = 0
@@ -101,9 +99,9 @@ function createSendStructure(dist::MPIDistributor{GID, PID, LID}, pid::PID,
             end
         end
 
-        dist.procs_to = Vector{PID}(dist.numSends)
-        dist.starts_to = Vector{GID}(dist.numSends)
-        dist.lengths_to = Vector{GID}(dist.numSends)
+        dist.procs_to = Vector{PID}(undef, dist.numSends)
+        dist.starts_to = Vector{GID}(undef, dist.numSends)
+        dist.lengths_to = Vector{GID}(undef, dist.numSends)
 
         index = numDeadIndices+1
         for i = 1:dist.numSends
@@ -146,7 +144,7 @@ function createSendStructure(dist::MPIDistributor{GID, PID, LID}, pid::PID,
         starts[1] = 1
 
         if nactive > 0
-            dist.indices_to = Array{GID, 1}(nactive)
+            dist.indices_to = Array{GID, 1}(undef, nactive)
         end
 
 
@@ -167,9 +165,9 @@ function createSendStructure(dist::MPIDistributor{GID, PID, LID}, pid::PID,
 
 
         if dist.numSends > 0
-            dist.lengths_to = Array{GID}(dist.numSends)
-            dist.procs_to = Array{PID}(dist.numSends)
-            dist.starts_to = Array{GID}(dist.numSends)
+            dist.lengths_to = Vector{GID}(undef, dist.numSends)
+            dist.procs_to = Vector{PID}(undef, dist.numSends)
+            dist.starts_to = Vector{GID}(undef, dist.numSends)
         end
 
         j::GID = 1
@@ -197,55 +195,57 @@ function computeRecvs(dist::MPIDistributor{GID, PID, LID}, myProc::PID, nProcs::
 
     msgCount = zeros(Int, nProcs)
 
-    for i = 1:(dist.numSends + dist.selfMsg)
-        msgCount[dist.procs_to[i]] += 1
+    for proc in dist.procs_to
+        msgCount[proc] += 1
     end
 
     #bug fix for reduce-scatter bug applied since no reduce_scatter is present in julia's MPI
     rawCounts = MPI.Reduce(msgCount, MPI.SUM, 0, dist.comm.mpiComm)
-    if rawCounts isa Void
+    if rawCounts isa Nothing
         counts = Int[]
     else
         counts = rawCounts
     end
-    dist.numRecvs = MPI.Scatter(counts, 1, 0, dist.comm.mpiComm)[1]
+    totalRecvs = MPI.Scatter(counts, 1, 0, dist.comm.mpiComm)[1]
 
-    dist.lengths_from = zeros(Int, dist.numRecvs)
-    dist.procs_from = zeros(PID, dist.numRecvs)
+    dist.lengths_from = zeros(Int, totalRecvs)
+    dist.procs_from = zeros(PID, totalRecvs)
 
     #using NEW_COMM_PATTERN (see line 590)
 
     if dist.request == []
-        dist.request = Array{MPI.Request}(dist.numRecvs - dist.selfMsg)
+        dist.request = Vector{MPI.Request}(undef, totalRecvs - dist.selfMsg)
     end
 
     #line 616
 
-    lengthWrappers = [Array{Int, 1}(1) for i in 1:(dist.numRecvs - dist.selfMsg)]
-    for i = 1:(dist.numRecvs - dist.selfMsg)
-        dist.request[i] = MPI.Irecv!(lengthWrappers[i], MPI.ANY_SOURCE, dist.tag, dist.comm.mpiComm)
+    lengthWrappers = [Array{Int, 1}(undef, 1) for i in 1:(totalRecvs - dist.selfMsg)]
+    for i = 1:(totalRecvs - dist.selfMsg)
+        dist.request[i] = MPI.Irecv!(lengthWrappers[i], MPI.ANY_SOURCE, MPI.ANY_TAG, dist.comm.mpiComm)
     end
+
+    barrier(dist.comm)
 
     for i = 1:(dist.numSends+dist.selfMsg)
         if dist.procs_to[i] != myProc
             #have to use Rsend in MPIUtil
-            MPI_Rsend(dist.lengths_to[i], dist.procs_to[i]-1, dist.tag, dist.comm.mpiComm)
+            MPI_Rsend(dist.lengths_to[i], dist.procs_to[i]-1, 1, dist.comm.mpiComm)
         else
-            dist.lengths_from[dist.numRecvs] = dist.lengths_to[i]
-            dist.procs_from[dist.numRecvs] = myProc
+            dist.lengths_from[totalRecvs] = dist.lengths_to[i]
+            dist.procs_from[totalRecvs] = myProc
         end
     end
 
-    if dist.numRecvs > dist.selfMsg
+    if totalRecvs > dist.selfMsg
         dist.status = MPI.Waitall!(dist.request)
     end
 
-    for i = 1:(dist.numRecvs - dist.selfMsg)
+    for i = 1:(totalRecvs - dist.selfMsg)
         dist.lengths_from[i] = lengthWrappers[i][1]
     end
 
 
-    for i = 1:(dist.numRecvs - dist.selfMsg)
+    for i = 1:(totalRecvs - dist.selfMsg)
         dist.procs_from[i] = MPI.Get_source(dist.status[i])+1
     end
 
@@ -253,19 +253,19 @@ function computeRecvs(dist::MPIDistributor{GID, PID, LID}, myProc::PID, nProcs::
     dist.procs_from = dist.procs_from[perm]
     dist.lengths_from = dist.lengths_from[perm]
 
-    dist.starts_from = Vector{GID}(dist.numRecvs)
+    dist.starts_from = Vector{GID}(undef, totalRecvs)
     j = GID(1)
-    for i = 1:dist.numRecvs
+    for i = 1:totalRecvs
         dist.starts_from[i] = j
         j += dist.lengths_from[i]
     end
 
     dist.totalRecvLength = 0
-    for i = 1:dist.numRecvs
+    for i = 1:totalRecvs
         dist.totalRecvLength += dist.lengths_from[i]
     end
 
-    dist.numRecvs -= dist.selfMsg
+    dist.numRecvs = totalRecvs - dist.selfMsg
 
     dist
 end
@@ -278,15 +278,15 @@ function computeSends(dist::MPIDistributor{GID, PID, LID},
 
     tmpPlan = MPIDistributor(dist.comm)
 
-    importObjs = Array{Tuple{GID, PID}}(numImports)
+    importObjs = Vector{Tuple{GID, PID}}(undef, numImports)
     for i = 1:numImports
         importObjs[i] = (remoteGIDs[i], myPid(dist.comm))#remotePIDs[i])
     end
 
     numExports = createFromSends(tmpPlan, copy(remotePIDs))
 
-    exportIDs = Array{GID}(numExports)
-    exportProcs = Array{PID}(numExports)
+    exportIDs = Vector{GID}(undef, numExports)
+    exportProcs = Vector{PID}(undef, numExports)
 
     exportObjs = resolve(tmpPlan, importObjs)
     for i = 1:numExports
@@ -303,7 +303,7 @@ function createReverseDistributor(dist::MPIDistributor{GID, PID, LID}
         ) where {GID <: Integer, PID <: Integer, LID <: Integer}
     myProc = myPid(dist.comm)
 
-    if isnull(dist.planReverse)
+    if dist.planReverse == nothing
         totalSendLength = reduce(+, dist.lengths_to)
 
         maxRecvLength::GID = 0
@@ -314,7 +314,7 @@ function createReverseDistributor(dist::MPIDistributor{GID, PID, LID}
         end
 
         reverse = MPIDistributor(dist.comm)
-        dist.planReverse = Nullable(reverse)
+        dist.planReverse = reverse
 
         reverse.lengths_to = dist.lengths_from
         reverse.procs_to = dist.procs_from
@@ -333,8 +333,8 @@ function createReverseDistributor(dist::MPIDistributor{GID, PID, LID}
         reverse.maxSendLength = maxRecvLength
         reverse.totalRecvLength = totalSendLength
 
-        reverse.request = Array{MPI.Request}(reverse.numRecvs)
-        reverse.status  = Array{MPI.Status}(reverse.numRecvs)
+        reverse.request = Vector{MPI.Request}(undef, reverse.numRecvs)
+        reverse.status  = Vector{MPI.Status}(undef, reverse.numRecvs)
     end
 
     nothing
@@ -344,14 +344,14 @@ end
 #### Distributor interface ####
 
 function createFromSends(dist::MPIDistributor{GID, PID, LID}, exportPIDs::AbstractArray{PID, 1})::Integer where GID <:Integer where PID <:Integer where LID <:Integer
-    const pid = myPid(dist.comm)
-    const nProcs = numProc(dist.comm)
+    pid = myPid(dist.comm)
+    nProcs = numProc(dist.comm)
     createSendStructure(dist, pid, nProcs, exportPIDs)
     computeRecvs(dist, pid, nProcs)
     if dist.numRecvs > 0
         if dist.request == []
-            dist.request = Vector{MPI.Request}(dist.numRecvs)
-            dist.status = Vector{MPI.Status}(dist.numRecvs)
+            dist.request = Vector{MPI.Request}(undef, dist.numRecvs)
+            dist.status = Vector{MPI.Status}(undef, dist.numRecvs)
         end
     end
     dist.totalRecvLength
@@ -383,42 +383,42 @@ function resolvePosts(dist::MPIDistributor{GID, PID, LID}, exportObjs::AbstractA
         procIndex = 1
     end
 
-    exportBytes = Vector{Vector{UInt8}}(dist.numRecvs + dist.selfMsg)
+    exportBytes = Vector{Vector{UInt8}}(undef, dist.numRecvs + dist.selfMsg)
 
     j::GID = 1
 
     buffer = IOBuffer()
     if length(dist.indices_to) == 0 #data already grouped by processor
         for i = 1:nBlocks
-            Serializer.serialize(buffer, exportObjs[j:j+dist.lengths_to[i]-1])
+            serialize(buffer, exportObjs[j:j+dist.lengths_to[i]-1])
             j += dist.lengths_to[i]
             exportBytes[i] = take!(buffer)
         end
     else #data not grouped by proc, must be grouped first
         for i = 1:nBlocks
             j = dist.starts_to[i]
-            sendArray = Array{T}(dist.lengths_to[i])
+            sendArray = Array{T}(undef, dist.lengths_to[i])
             for k = 1:dist.lengths_to[i]
                 sendArray[k] = exportObjs[dist.indices_to[j+k-1]]
             end
-            Serializer.serialize(buffer, sendArray)
+            serialize(buffer, sendArray)
             exportBytes[i] = take!(buffer)
         end
     end
 
 
     ## get sizes of data begin received ##
-    lengthRequests = Array{MPI.Request}(dist.numRecvs)
-    lengths = Array{Array{Int, 1}}(dist.numRecvs + dist.selfMsg)
+    lengthRequests = Vector{MPI.Request}(undef, dist.numRecvs)
+    lengths = Vector{Vector{Int}}(undef, dist.numRecvs + dist.selfMsg)
     for i = 1:dist.numRecvs + dist.selfMsg
-        lengths[i] = Array{Int}(1)
+        lengths[i] = Vector{Int}(undef, 1)
     end
 
     j = 1
 
     for i = 1:dist.numRecvs + dist.selfMsg
         if dist.procs_from[i] != myProc
-            lengthRequests[j] = MPI.Irecv!(lengths[i], dist.procs_from[i]-1, dist.tag, dist.comm.mpiComm)
+            lengthRequests[j] = MPI.Irecv!(lengths[i], dist.procs_from[i]-1, MPI.ANY_TAG, dist.comm.mpiComm)
             j += 1
         end
     end
@@ -431,7 +431,7 @@ function resolvePosts(dist::MPIDistributor{GID, PID, LID}, exportObjs::AbstractA
             p -= nBlocks
         end
         if dist.procs_to[i] != myProc
-            MPI_Rsend(length(exportBytes[i]), dist.procs_to[i]-1, dist.tag, dist.comm.mpiComm)
+            MPI_Rsend(length(exportBytes[i]), dist.procs_to[i]-1, 2, dist.comm.mpiComm)
         else
             lengths[i][1] = length(exportBytes[i])
         end
@@ -440,12 +440,12 @@ function resolvePosts(dist::MPIDistributor{GID, PID, LID}, exportObjs::AbstractA
     MPI.Waitall!(lengthRequests)
     #at this point `lengths` should contain the sizes of incoming data
 
-    importObjs = Vector{Vector{UInt8}}(dist.numRecvs+dist.selfMsg)
+    importObjs = Vector{Vector{UInt8}}(undef, dist.numRecvs+dist.selfMsg)
     for i = 1:length(importObjs)
-        importObjs[i] = Vector{UInt8}(lengths[i][1])
+        importObjs[i] = Vector{UInt8}(undef, lengths[i][1])
     end
 
-    dist.importObjs = Nullable(importObjs)
+    dist.importObjs = importObjs
 
     ## back to the regularly scheduled program ##
 
@@ -454,7 +454,7 @@ function resolvePosts(dist::MPIDistributor{GID, PID, LID}, exportObjs::AbstractA
     selfRecvAddress::GID = 0
     for i = 1:dist.numRecvs + dist.selfMsg
         if dist.procs_from[i] != myProc
-            MPI.Irecv!(importObjs[i], dist.procs_from[i]-1, dist.tag, dist.comm.mpiComm)
+            MPI.Irecv!(importObjs[i], dist.procs_from[i]-1, MPI.ANY_TAG, dist.comm.mpiComm)
         else
             selfRecvAddress = i
         end
@@ -473,7 +473,7 @@ function resolvePosts(dist::MPIDistributor{GID, PID, LID}, exportObjs::AbstractA
             p -= nBlocks
         end
         if dist.procs_to[p] != myProc
-            MPI_Rsend(exportBytes[p], dist.procs_to[p]-1, dist.tag, dist.comm.mpiComm)
+            MPI_Rsend(exportBytes[p], dist.procs_to[p]-1, 3, dist.comm.mpiComm)
         else
             selfNum = p
         end
@@ -494,19 +494,19 @@ function resolveWaits(dist::MPIDistributor)::Array
         dist.status = MPI.Waitall!(dist.request)
     end
 
-    if isnull(dist.importObjs)
+    if dist.importObjs == nothing
         throw(InvalidStateError("Cannot resolve waits when no posts have been made"))
     end
 
-    importObjs = get(dist.importObjs)
-    deserializedObjs = Vector{Vector{Any}}(length(importObjs))
+    importObjs = dist.importObjs
+    deserializedObjs = Vector{Vector{Any}}(undef, length(importObjs))
     for i = 1:length(importObjs)
-        deserializedObjs[i] = Serializer.deserialize(IOBuffer(importObjs[i]))
+        deserializedObjs[i] = deserialize(IOBuffer(importObjs[i]))
     end
 
-    dist.importObjs = Nullable{Array{Array{UInt8}}}()
+    dist.importObjs = nothing
 
-    reduce(vcat, [], deserializedObjs)
+    reduce(vcat, deserializedObjs; init=[])
 end
 
 
@@ -517,19 +517,19 @@ function resolveReversePosts(dist::MPIDistributor{GID, PID, LID},
         throw(InvalidStateError("Cannot do reverse comm when data is not blocked by processor"))
     end
 
-    if isnull(dist.planReverse)
+    if dist.planReverse == nothing
         createReverseDistributor(dist)
     end
 
-    resolvePosts(get(dist.planReverse), exportObjs)
+    resolvePosts(dist.planReverse, exportObjs)
 end
 
 
 function resolveReverseWaits(dist::MPIDistributor{GID, PID, LID}
     )::Vector where {GID <: Integer, PID <: Integer, LID <: Integer}
-    if isnull(dist.planReverse)
+    if dist.planReverse == nothing
         throw(InvalidStateError("Cannot resolve reverse waits if there is no reverse plan"))
     end
 
-    resolveWaits(get(dist.planReverse))
+    resolveWaits(dist.planReverse)
 end

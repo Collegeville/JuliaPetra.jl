@@ -5,9 +5,9 @@ export insertLocalIndices, insertGlobalIndices
 #### RowGraph methods ####
 
 getRowMap(graph::CSRGraph) = graph.rowMap
-getColMap(graph::CSRGraph) = get(graph.colMap)
-getDomainMap(graph::CSRGraph) = get(graph.domainMap)
-getRangeMap(graph::CSRGraph) = get(graph.rangeMap)
+getColMap(graph::CSRGraph) = graph.colMap
+getDomainMap(graph::CSRGraph) = graph.domainMap
+getRangeMap(graph::CSRGraph) = graph.rangeMap
 getImporter(graph::CSRGraph) = graph.importer
 getExporter(graph::CSRGraph) = graph.exporter
 
@@ -43,7 +43,7 @@ getLocalNumDiags(graph::CSRGraph) = graph.nodeNumDiags
 getGlobalMaxNumRowEntries(graph::CSRGraph) = graph.globalMaxNumRowEntries
 getLocalMaxNumRowEntries(graph::CSRGraph) = graph.nodeMaxNumRowEntries
 
-hasColMap(graph::CSRGraph) = !isnull(graph.colMap)
+hasColMap(graph::CSRGraph) = graph.colMap != nothing
 
 isLowerTriangular(graph::CSRGraph) = graph.lowerTriangle
 isUpperTriangular(graph::CSRGraph) = graph.upperTriangle
@@ -266,7 +266,7 @@ function insertLocalIndices(graph::CSRGraph{GID, PID, LID},
         throw(InvalidStateError("Row information was deleted"))
     end
 
-    if @debug
+    if @is_debug_mode
         colMap = getColMap(graph)
         badColIndices = [ind for ind in indices if myLID(colMap, ind)]
 
@@ -285,7 +285,7 @@ function insertLocalIndices(graph::CSRGraph{GID, PID, LID},
 
     insertLocalIndicesImpl(graph, localRow, indices)
 
-    if @debug
+    if @is_debug_mode
         @assert isLocallyIndexed(graph) "Post condtion violated"
     end
 end
@@ -326,9 +326,9 @@ function insertGlobalIndices(graph::CSRGraph{GID, PID, LID}, globalRow::GID,
 
     myRow = lid(graph.rowMap, globalRow)
     if myRow != 0
-        if @debug
+        if @is_debug_mode
             if hasColMap(graph)
-                colMap = get(graph.colMap)
+                colMap = graph.colMap
 
                 #appearently jupyter can't render the generator if properly
                 badColInds = [index for index in indices
@@ -443,7 +443,7 @@ function getGlobalRowView(graph::CSRGraph{GID}, globalRow::GID)::AbstractArray{G
         throw(InvalidArgumentError("The graph's indices are currently stored as local indices, so a view with global column indices cannot be returned.  Use getGlobalRowCopy(::CSRGraph) instead"))
     end
 
-    if @debug
+    if @is_debug_mode
         @assert hasRowInfo(graph) "Graph row information was deleted"
     end
     rowInfo = getRowInfoFromGlobalRow(graph, globalRow)
@@ -462,7 +462,7 @@ Base.@propagate_inbounds function getGlobalRowViewPtr(graph::CSRGraph{GID, PID, 
         throw(InvalidArgumentError("The graph's indices are currently stored as local indices, so a view with global column indices cannot be returned.  Use getGlobalRowCopy(::CSRGraph) instead"))
     end
 
-    if @debug
+    if @is_debug_mode
         @assert hasRowInfo(graph) "Graph row information was deleted"
     end
     rowInfo = getRowInfoFromGlobalRow(graph, globalRow)
@@ -480,7 +480,7 @@ Base.@propagate_inbounds function getGlobalRowViewPtr(graph::CSRGraph{GID, PID, 
 end
 
 function getLocalRowView(graph::CSRGraph{GID}, localRow::GID)::AbstractArray{GID, 1} where {GID}
-    if @debug
+    if @is_debug_mode
         @assert hasRowInfo() "Graph row information was deleted"
     end
     rowInfo = getRowInfoFromLocalRowIndex(graph, localRow)
@@ -500,7 +500,7 @@ function getLocalRowView(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo{LID}
     if rowInfo.localRow != 0 && rowInfo.numEntries > 0
         indices = view(getLocalView(graph, rowInfo), 1:rowInfo.numEntries)
 
-        if @debug
+        if @is_debug_mode
             @assert(length(indices) == getNumEntriesInLocalRow(graph, localRow),
                 "length(indices) = $(length(indices)) "
                 * "!= getNumEntriesInLocalRow(graph, $localRow) "
@@ -512,9 +512,9 @@ function getLocalRowView(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo{LID}
     end
 end
 
-resumeFill(graph::CSRGraph; plist...) = resumeFill(graph, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
+resumeFill(graph::CSRGraph; plist...) = resumeFill(graph, Dict(plist))
 
-function resumeFill(graph::CSRGraph, plist::Dict{Symbol})
+function resumeFill(graph::CSRGraph, plist::Dict)
     if !hasRowInfo(graph)
         throw(InvalidStateError("Cannot resume fill of the CSRGraph, "
                 * "since the graph's row information was deleted."))
@@ -528,25 +528,25 @@ function resumeFill(graph::CSRGraph, plist::Dict{Symbol})
     graph.noRedundancies = true
     graph.fillComplete = false
 
-    if @debug
+    if @is_debug_mode
         @assert isFillActive(graph) && !isFillComplete(graph) "Post condition violated"
     end
 end
 
 
-fillComplete(graph::CSRGraph; plist...) = fillComplete(graph, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
+fillComplete(graph::CSRGraph; plist...) = fillComplete(graph, Dict(plist))
 
-function fillComplete(graph::CSRGraph, plist::Dict{Symbol})
-    if isnull(graph.domainMap)
+function fillComplete(graph::CSRGraph, plist::Dict)
+    if graph.domainMap == nothing
         domMap = graph.rowMap
     else
-        domMap = get(graph.domainMap)
+        domMap = graph.domainMap
     end
 
-    if isnull(graph.rangeMap)
+    if graph.rangeMap == nothing
         ranMap = graph.colMap
     else
-        ranMap = get(graph.rangeMap)
+        ranMap = graph.rangeMap
     end
 
     fillComplete(graph, ranMap, domMap, plist)
@@ -555,19 +555,19 @@ end
 function fillComplete(graph::CSRGraph{GID, PID, LID},
         domainMap::BlockMap{GID, PID, LID}, rangeMap::BlockMap{GID, PID, LID};
         plist...) where {GID, PID, LID}
-    fillComplete(graph, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
+    fillComplete(graph, Dict(plist))
 end
 
-function fillComplete(graph::CSRGraph{GID, PID, LID}, domainMap::BlockMap{GID, PID, LID}, rangeMap::BlockMap{GID, PID, LID}, plist::Dict{Symbol}) where {GID, PID, LID}
+function fillComplete(graph::CSRGraph{GID, PID, LID}, domainMap::BlockMap{GID, PID, LID}, rangeMap::BlockMap{GID, PID, LID}, plist::Dict) where {GID, PID, LID}
     if !isFillActive(graph) || isFillComplete(graph)
         throw(InvalidStateError("Graph fill state must be active to call fillComplete(...)"))
     end
 
-    const numProcs = numProc(getComm(graph))
+    numProcs = numProc(getComm(graph))
 
-    const assertNoNonlocalInserts = get(plist, :noNonlocalChanges, false)
+    assertNoNonlocalInserts = get(plist, :noNonlocalChanges, false)
 
-    const mayNeedGlobalAssemble = !assertNoNonlocalInserts && numProcs > 1
+    mayNeedGlobalAssemble = !assertNoNonlocalInserts && numProcs > 1
     if mayNeedGlobalAssemble
         globalAssemble(graph)
     else
@@ -591,7 +591,7 @@ function fillComplete(graph::CSRGraph{GID, PID, LID}, domainMap::BlockMap{GID, P
     fillLocalGraph(graph, plist)
     graph.fillComplete(true)
 
-    if @debug
+    if @is_debug_mode
         @assert !isFillActive(graph) && isFillComplete(graph) "post conditions violated"
     end
 
@@ -599,13 +599,13 @@ function fillComplete(graph::CSRGraph{GID, PID, LID}, domainMap::BlockMap{GID, P
 end
 
 function makeColMap(graph::CSRGraph{GID, PID, LID}) where {GID, PID, LID}
-    const localNumRows = getLocalNumEntries(graph)
+    localNumRows = getLocalNumEntries(graph)
 
     #TODO look at FIXME on line 4898
 
     error, colMap = __makeColMap(graph, graph.domainMap)
 
-    if @debug
+    if @is_debug_mode
         comm = getComm(graph)
         globalError = maxAll(comm, error)
 
@@ -644,7 +644,7 @@ function setAllIndices(graph::CSRGraph{GID, PID, LID},
 
     localNumRows = getLocalNumRows(graph)
 
-    if isnull(graph.colMap)
+    if graph.colMap == nothing
         throw(InvalidStateError("The graph must have a "
                 * "column map before calling setAllIndices"))
     end
@@ -674,8 +674,8 @@ end
 Whether the graph's storage is optimized
 """
 function isStorageOptimized(graph::CSRGraph)
-    const isOpt = length(graph.numRowEntries) == 0 && getLocalNumRows(graph) > 0
-    if (@debug) && isOpt
+    isOpt = length(graph.numRowEntries) == 0 && getLocalNumRows(graph) > 0
+    if (@is_debug_mode) && isOpt
         @assert(getProfileType(graph) == STATIC_PROFILE,
             "Matrix claims optimized storage by profile type "
             * "is dynamic.  This shouldn't happend.")

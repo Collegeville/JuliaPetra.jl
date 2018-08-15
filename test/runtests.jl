@@ -6,7 +6,7 @@ using TypeStability
 enable_inline_stability_checks(true)
 
 using JuliaPetra
-using Base.Test
+using Test
 
 @. ARGS = lowercase(ARGS)
 # check for command line arguments requesting parts to not be tested
@@ -21,7 +21,7 @@ include("TestUtil.jl")
 @testset "Serial tests" begin
 
     #a generic serial comm for the tests that need to be called with a comm object
-    const serialComm = SerialComm{UInt64, UInt16, UInt32}()
+    serialComm = SerialComm{UInt64, UInt16, UInt32}()
 
     if !noUtil
         @testset "Util Tests" begin

@@ -12,36 +12,36 @@ end
 
 ## Constructors ##
 
-function Export(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID}, remotePIDs::Nullable{AbstractArray{PID}}=Nullable{AbstractArray{PID}}(); plist...) where {GID <: Integer, PID <: Integer, LID <: Integer}
+function Export(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID}, remotePIDs::Union{AbstractArray{PID}, Nothing}=nothing; plist...) where {GID <: Integer, PID <: Integer, LID <: Integer}
     Export(source, target,
-        Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
+        Dict(Tuple{Symbol, Any}[pair for pair in plist]))
 end
 
 function Export(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID},
         plist::Dict{Symbol}) where {GID <: Integer, PID <: Integer, LID <: Integer}
-    Export(source, target, Nullable{AbstractArray{PID}}(), plist)
+    Export(source, target, nothing, plist)
 end
 
 function Export(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID},
-        remotePIDs::Nullable{AbstractArray{PID}}, plist::Dict{Symbol}) where {
+        remotePIDs::Union{AbstractArray{PID}, Nothing}, plist::Dict{Symbol}) where {
             GID <: Integer, PID <: Integer, LID <: Integer}
 
-    if @debug
-        info("$(myPid(getComm(source))): Export ctor\n")
+    if @is_debug_mode
+        @info "$(myPid(getComm(source))): Export ctor\n"
     end
 
     expor = Export(ImportExportData(source, target))
 
     exportGIDs = setupSamePermuteExport(expor)
 
-    if @debug
-        info("$(myPid(getComm(source))): Export ctor: setupSamePermuteExport done\n")
+    if @is_debug_mode
+        @info "$(myPid(getComm(source))): Export ctor: setupSamePermuteExport done\n"
     end
     if distributedGlobal(source)
         setupRemote(expor, exportGIDs)
     end
-    if @debug
-        info("$(myPid(getComm(source))): Export ctor: done\n")
+    if @is_debug_mode
+        @info "$(myPid(getComm(source))): Export ctor: done\n"
     end
 
     expor
@@ -72,14 +72,14 @@ function setupSamePermuteExport(expor::Export{GID, PID, LID})::AbstractArray{GID
     numSameGIDs -= 1
     numSameIDs(data, numSameGIDs)
 
-    exportGIDs = Array{GID, 1}(0)
+    exportGIDs = Array{GID, 1}(undef, 0)
     permuteToLIDs = JuliaPetra.permuteToLIDs(data)
     permuteFromLIDs = JuliaPetra.permuteFromLIDs(data)
     exportLIDs = JuliaPetra.exportLIDs(data)
 
     for srcLID = (numSameGIDs+1):numSrcGIDs
-        const curSrcGID = sourceGIDs[srcLID]
-        const tgtLID = lid(target, curSrcGID)
+        curSrcGID = sourceGIDs[srcLID]
+        tgtLID = lid(target, curSrcGID)
         if tgtLID != 0
             push!(permuteToLIDs, tgtLID)
             push!(permuteFromLIDs, srcLID)
@@ -147,8 +147,8 @@ function setupRemote(expor::Export{GID, PID, LID}, exportGIDs::AbstractArray{GID
 
     target = targetMap(data)
 
-    if @debug
-        info("$(myPid(getComm(target))): setupRemote\n")
+    if @is_debug_mode
+        @info "$(myPid(getComm(target))): setupRemote\n"
     end
 
     exportPIDs = JuliaPetra.exportPIDs(data)
@@ -158,14 +158,14 @@ function setupRemote(expor::Export{GID, PID, LID}, exportGIDs::AbstractArray{GID
     permute!(exportLIDs(data), order)
     permute!(exportGIDs, order)
 
-    if @debug
-        info("$(myPid(getComm(target))): setupRemote: Calling createFromSends\n")
+    if @is_debug_mode
+        @info "$(myPid(getComm(target))): setupRemote: Calling createFromSends\n"
     end
 
     numRemoteIDs = createFromSends(distributor(data), exportPIDs)
 
-    if @debug
-        info("$(myPid(getComm(target))): setupRemote: Calling doPostsAndWaits\n")
+    if @is_debug_mode
+        @info "$(myPid(getComm(target))): setupRemote: Calling doPostsAndWaits\n"
     end
 
     remoteGIDs = resolve(distributor(data), exportGIDs)
@@ -178,8 +178,8 @@ function setupRemote(expor::Export{GID, PID, LID}, exportGIDs::AbstractArray{GID
         remoteLIDs[i] = lid(target, remoteGIDs[i])
     end
 
-    if @debug
-        info("$(myPid(getComm(target))): setupRemote: done\n")
+    if @is_debug_mode
+        @info "$(myPid(getComm(target))): setupRemote: done\n"
     end
 end
 

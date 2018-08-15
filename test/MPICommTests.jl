@@ -16,7 +16,7 @@ MPIComm(UInt64, UInt16, UInt32)
 @test [4, 6] == broadcastAll(comm, [myPid(comm), 6], 4)
 
 @test [1, 2, 3, 4] == gatherAll(comm, [myPid(comm)])
-@test ([1, 2, 3, 2, 4, 6, 3, 6, 9, 4, 8, 12] 
+@test ([1, 2, 3, 2, 4, 6, 3, 6, 9, 4, 8, 12]
         == gatherAll(comm, [myPid(comm), myPid(comm)*2, myPid(comm)*3]))
 
 #check for hangs and such, hard to test if all processes are at the same spot
@@ -32,7 +32,7 @@ barrier(comm)
 @test [1, -4, 6] == minAll(comm, [myPid(comm), -Int(myPid(comm)), 6])
 
 @test [sum(1:myPid(comm))] == scanSum(comm, [myPid(comm)])
-@test ([myPid(comm)*5, sum(-2:-2:(-2*Int(myPid(comm)))), myPid(comm)*3] 
+@test ([myPid(comm)*5, sum(-2:-2:(-2*Int(myPid(comm)))), myPid(comm)*3]
         == scanSum(comm, [5, -2*Int(myPid(comm)), 3]))
 
 #test distributor
@@ -58,8 +58,8 @@ resolvePosts(dist, [pid, 2*pid, 3*pid, 4*pid])
 dist2 = createDistributor(comm)
 @test 8 == createFromSends(dist, [1, 2, 3, 4, 1, 2, 3, 4])
 
-@test (reduce(vcat, [], [[(pid-1)*5+j, (pid+3)*5+j] for j in 1:4])
+@test (reduce(vcat, [[(pid-1)*5+j, (pid+3)*5+j] for j in 1:4]; init=[])
         == resolve(dist, [pid, 5+pid, 10+pid, 15+pid, 20+pid, 25+pid, 30+pid, 35+pid]))
-    
+
 #test distributore createFromRecvs
 @test ([(pid-1)*5+j for j in 1:4], [1, 2, 3, 4]) == createFromRecvs(dist, [pid, 5+pid, 10+pid, 15+pid], [1, 2, 3, 4])

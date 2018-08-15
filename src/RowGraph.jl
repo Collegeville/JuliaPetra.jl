@@ -29,10 +29,10 @@ Gets the domain map for the graph
     getRangeMap(::RowGraph{GID, PID, LID})::BlockMap{GID, PID, LID}
 Gets the range map for the graph
 
-    getImporter(::RowGraph{GID, PID, LID})::Nullable{Import{GID, PID, LID}}
+    getImporter(::RowGraph{GID, PID, LID})::Union{Import{GID, PID, LID}, Nothing}
 Gets the graph's Import object
 
-    getExporter(::RowGraph{GID, PID, LID})::Nullable{Export{GID, PID, LID}}
+    getExporter(::RowGraph{GID, PID, LID})::Union{Export{GID, PID, LID}, Nothing}
 Gets the graph's Export object
 
     getGlobalNumEntries(::RowGraph{GID, PID, LID})::GID
@@ -109,7 +109,7 @@ Creates a copy of the given row of the graph using global indices
 """
 Base.@propagate_inbounds function getGlobalRowCopy(graph::RowGraph{GID}, row::Integer)::AbstractVector{GID} where GID
     numElts = getNumEntriesInGlobalRow(graph, row)
-    copy = Vector{GID}(numElts)
+    copy = Vector{GID}(undef, numElts)
     getGlobalRowCopy!(copy, graph, GID(row))
     copy
 end
@@ -122,7 +122,7 @@ Creates a copy of the given row of the graph using local indices
 """
 Base.@propagate_inbounds function getLocalRowCopy(graph::RowGraph{GID, PID, LID}, row::Integer)::AbstractVector{LID} where {GID, PID, LID}
     numElts = getNumEntriesInGlobalRow(graph, row)
-    copy = Vector{LID}(numElts)
+    copy = Vector{LID}(undef, numElts)
     getLocalRowCopy!(copy, graph, LID(row))
     copy
 end
@@ -276,14 +276,14 @@ Gets the range map for the graph
 function getRangeMap end
 
 """
-    getImporter(::RowGraph{GID, PID, LID})::Nullable{Import{GID, PID, LID}}
+    getImporter(::RowGraph{GID, PID, LID})::Union{Import{GID, PID, LID}, Nothing}
 
 Gets the graph's Import object, or null if the import is trivial
 """
 function getImporter end
 
 """
-    getExporter(::RowGraph{GID, PID, LID})::Nullable{Export{GID, PID, LID}}
+    getExporter(::RowGraph{GID, PID, LID})::Union{Export{GID, PID, LID}, Nothing}
 
 Gets the graph's Export object, or null if the export is trivial
 """

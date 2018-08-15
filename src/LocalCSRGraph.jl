@@ -14,7 +14,7 @@ mutable struct LocalCSRGraph{EntriesType, IndexType <: Integer}
 end
 
 function LocalCSRGraph{EntriesType, IndexType}() where{EntriesType, IndexType <: Integer}
-    LocalCSRGraph(Array{EntriesType, 1}(0), Array{IndexType, 1}(0))
+    LocalCSRGraph(Array{EntriesType, 1}(undef, 0), Array{IndexType, 1}(undef, 0))
 end
 
 

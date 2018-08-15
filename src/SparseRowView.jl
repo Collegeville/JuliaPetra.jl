@@ -1,6 +1,10 @@
 
 export SparseRowView, vals, cols
 
+using SparseArrays
+import SparseArrays: nnz
+export nnz
+
 """
     SparseRowView(vals::AbstractArray{Data}, cols::AbstractArray{IndexType}, count::Integer=length(vals), start::Integer=1, stride::Integer=1)
 
@@ -22,11 +26,11 @@ end
 
 function SparseRowView(vals::AbstractArray{Data}, cols::AbstractArray{IndexType},
         count::Integer, start::Integer=1, stride::Integer=1) where {Data, IndexType}
-    SparseRowView(view(vals, range(start, stride, count)),
-        view(cols, range(start, stride, count)))
+    SparseRowView(view(vals, range(start, step=stride, length=count)),
+        view(cols, range(start, step=stride, length=count)))
 end
-   
-function Base.nnz(row::SparseRowView{Data, IndexType}) where{Data, IndexType} 
+
+function nnz(row::SparseRowView{Data, IndexType}) where{Data, IndexType}
     IndexType(length(row.vals))
 end
 

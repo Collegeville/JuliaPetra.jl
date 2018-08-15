@@ -4,7 +4,7 @@ export createDirectory
 
 function getDirectoryEntries(directory::Directory{GID, PID, LID}, map::BlockMap{GID, PID, LID},
         globalEntries::AbstractArray{Number}, high_rank_sharing_procs::Bool=false)::Tuple{AbstractArray{PID}, AbstractArray{LID}} where GID <: Integer where PID <: Integer where LID <: Integer
-    getDirectoryEntries(directory, map, Array{GID, 1}(globalEntries), high_rank_sharing_procs)
+    getDirectoryEntries(directory, map, Array{GID, 1}(undef, globalEntries), high_rank_sharing_procs)
 end
 
 function getDirectoryEntries(directory::Directory{GID, PID, LID}, map::BlockMap{GID, PID, LID},

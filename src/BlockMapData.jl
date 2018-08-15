@@ -1,9 +1,9 @@
 """
 Contains the data for a BlockMap
 """
-type BlockMapData{GID <: Integer, PID <:Integer, LID <: Integer}
+mutable struct BlockMapData{GID <: Integer, PID <:Integer, LID <: Integer}
     comm::Comm{GID, PID, LID}
-    directory::Nullable{Directory}
+    directory::Union{Directory, Nothing}
     lid::Vector{LID}
     myGlobalElements::Vector{GID}
 #    firstPointInElementList::Array{Integer}
@@ -39,7 +39,7 @@ end
 function BlockMapData(numGlobalElements::GID, comm::Comm{GID, PID, LID}) where GID <: Integer where PID <: Integer where LID <: Integer
     BlockMapData(
         comm,
-        Nullable{Directory}(),
+        nothing,
         LID[],
         GID[],
 

@@ -4,10 +4,10 @@ using TypeStability
 
 mutable struct CSRMatrix{Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer} <: RowMatrix{Data, GID, PID, LID}
     rowMap::BlockMap{GID, PID, LID}
-    colMap::Nullable{BlockMap{GID, PID, LID}}
+    colMap::Union{BlockMap{GID, PID, LID}, Nothing}
 
-    importMV::Nullable{MultiVector{Data, GID, PID, LID}}
-    exportMV::Nullable{MultiVector{Data, GID, PID, LID}}
+    importMV::Union{MultiVector{Data, GID, PID, LID}, Nothing}
+    exportMV::Union{MultiVector{Data, GID, PID, LID}, Nothing}
 
     myGraph::CSRGraph{GID, PID, LID}
 
@@ -22,9 +22,9 @@ mutable struct CSRMatrix{Data <: Number, GID <: Integer, PID <: Integer, LID <: 
     #second element of each tuple is the matching entry
     nonlocals::Dict{GID, Tuple{Array{Data, 1}, Array{GID, 1}}}
 
-    plist::Dict{Symbol}
+    plist::Dict
 
-    function CSRMatrix{Data, GID, PID, LID}(rowMap::BlockMap{GID, PID, LID}, colMap::Nullable{BlockMap{GID, PID, LID}}, myGraph::CSRGraph{GID, PID, LID}, localMatrix::LocalCSRMatrix{Data, LID}, plist::Dict{Symbol}) where {Data, GID, PID, LID}
+    function CSRMatrix{Data, GID, PID, LID}(rowMap::BlockMap{GID, PID, LID}, colMap::Union{BlockMap{GID, PID, LID}, Nothing}, myGraph::CSRGraph{GID, PID, LID}, localMatrix::LocalCSRMatrix{Data, LID}, plist::Dict) where {Data, GID, PID, LID}
 
         #allocate values
         localNumRows = getLocalNumRows(myGraph)
@@ -34,23 +34,23 @@ mutable struct CSRMatrix{Data <: Number, GID <: Integer, PID <: Integer, LID <: 
 
             resize!(localMatrix.values, localTotalNumEntries)
 
-            values2D = Array{Array{Data, 1}, 1}(0)
+            values2D = Array{Array{Data, 1}, 1}(undef, 0)
         else #DYNAMIC_PROFILE
             if isLocallyIndexed(myGraph)
                 graphIndices = myGraph.localIndices
             else
                 graphIndices = myGraph.globalIndices
             end
-            values2D = Array{Array{Data, 1}, 1}(localNumRows)
+            values2D = Array{Array{Data, 1}, 1}(undef, localNumRows)
             for r = 1:length(graphIndices)
-                values2D[r] = Array{Array{Data, 1}, 1}(length(graphIndices[r]))
+                values2D[r] = Array{Array{Data, 1}, 1}(undef, length(graphIndices[r]))
             end
         end
 
         new(rowMap,
             colMap,
-            Nullable{MultiVector{Data, GID, PID, LID}}(),
-            Nullable{MultiVector{Data, GID, PID, LID}}(),
+            nothing,
+            nothing,
             myGraph,
             localMatrix,
             values2D,
@@ -66,12 +66,12 @@ end
 function CSRMatrix{Data}(rowMap::BlockMap{GID, PID, LID},
         maxNumEntriesPerRow::Union{Integer, Array{<:Integer, 1}},
         pftype::ProfileType; plist...) where {Data, GID, PID, LID}
-    CSRMatrix{Data}(rowMap, maxNumEntriesPerRow, pftype, Dict(Array{Tuple{Symbol, Any}}(plist)))
+    CSRMatrix{Data}(rowMap, maxNumEntriesPerRow, pftype, Dict(plist))
 end
 function CSRMatrix{Data}(rowMap::BlockMap{GID, PID, LID},
         maxNumEntriesPerRow::Union{Integer, Array{<:Integer, 1}},
-        pftype::ProfileType, plist::Dict{Symbol}) where {Data, GID, PID, LID}
-    CSRMatrix{Data}(rowMap, Nullable{BlockMap{GID, PID, LID}}(),
+        pftype::ProfileType, plist::Dict) where {Data, GID, PID, LID}
+    CSRMatrix{Data}(rowMap, nothing,
         maxNumEntriesPerRow, pftype, plist)
 end
 
@@ -79,26 +79,26 @@ function CSRMatrix{Data}(rowMap::BlockMap{GID, PID, LID},
         colMap::BlockMap{GID, PID, LID},
         maxNumEntriesPerRow::Union{Integer, Array{<:Integer, 1}},
         pftype::ProfileType; plist...) where {Data, GID, PID, LID}
-    CSRMatrix{Data}(rowMap, colMap, maxNumEntriesPerRow, pftype, Dict(Array{Tuple{Symbol, Any}}(plist)))
+    CSRMatrix{Data}(rowMap, colMap, maxNumEntriesPerRow, pftype, Dict(plist))
 end
 function CSRMatrix{Data}(rowMap::BlockMap{GID, PID, LID},
         colMap::BlockMap{GID, PID, LID},
         maxNumEntriesPerRow::Union{Integer, Array{<:Integer, 1}},
-        pftype::ProfileType, plist::Dict{Symbol}) where {Data, GID, PID, LID}
-    CSRMatrix{Data}(rowMap, Nullable(colMap), maxNumEntriesPerRow,
+        pftype::ProfileType, plist::Dict) where {Data, GID, PID, LID}
+    CSRMatrix{Data}(rowMap, colMap, maxNumEntriesPerRow,
         pftype, plist)
 end
 
 function CSRMatrix{Data}(rowMap::BlockMap{GID, PID, LID},
-        colMap::Nullable{BlockMap{GID, PID, LID}},
+        colMap::Union{BlockMap{GID, PID, LID}, Nothing},
         maxNumEntriesPerRow::Union{Integer, Array{<:Integer, 1}},
         pftype::ProfileType; plist...) where {Data, GID, PID, LID}
-    CSRMatrix{Data}(rowMap, colMap, maxNumEntriesPerRow, pftype, Dict(Array{Tuple{Symbol, Any}}(plist)))
+    CSRMatrix{Data}(rowMap, colMap, maxNumEntriesPerRow, pftype, Dict(plist))
 end
 function CSRMatrix{Data}(rowMap::BlockMap{GID, PID, LID},
-        colMap::Nullable{BlockMap{GID, PID, LID}},
+        colMap::Union{BlockMap{GID, PID, LID}, Nothing},
         maxNumEntriesPerRow::Union{Integer, Array{<:Integer, 1}},
-        pftype::ProfileType, plist::Dict{Symbol}) where {Data, GID, PID, LID}
+        pftype::ProfileType, plist::Dict) where {Data, GID, PID, LID}
     graph = CSRGraph(rowMap, maxNumEntriesPerRow, pftype, plist)
 
     matrix = CSRMatrix{Data, GID, PID, LID}(rowMap, colMap,
@@ -111,13 +111,13 @@ end
 
 function CSRMatrix{Data}(graph::CSRGraph{GID, PID, LID}; plist...
         ) where {Data, GID, PID, LID}
-    CSRMatrix{Data}(graph, Dict(Array{Tuple{Symbol, Any}}(plist)))
+    CSRMatrix{Data}(graph, Dict(plist))
 end
-function CSRMatrix{Data}(graph::CSRGraph{GID, PID, LID},plist::Dict{Symbol}
+function CSRMatrix{Data}(graph::CSRGraph{GID, PID, LID},plist::Dict
         ) where {Data, GID, PID, LID}
     numCols = numMyElements(getColMap(graph))
     localGraph = getLocalGraph(graph)
-    val = Array{Data, 1}(length(localGraph.entries))
+    val = Array{Data, 1}(undef, length(localGraph.entries))
     localMatrix = LocalCSRMatrix(numCols, val, localGraph)
 
     CSRMatrix(graph.rowMap, graph.colMap, graph, localMatrix, plist)
@@ -126,11 +126,11 @@ end
 function CSRMatrix(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
         rowOffsets::AbstractArray{LID, 1}, colIndices::AbstractArray{LID, 1}, values::AbstractArray{Data, 1};
         plist...) where {Data, GID, PID, LID}
-    CSRMatrix(rowMap, colMap, rowOffsets, colIndices, values, Dict(Array{Tuple{Symbol, Any}}(plist)))
+    CSRMatrix(rowMap, colMap, rowOffsets, colIndices, values, Dict(plist))
 end
 function CSRMatrix(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
         rowOffsets::AbstractArray{LID, 1}, colIndices::AbstractArray{LID, 1}, values::AbstractArray{Data, 1},
-        plist::Dict{Symbol}) where {Data, GID, PID, LID}
+        plist::Dict) where {Data, GID, PID, LID}
 
     #check user's input.  Might throw on only some processes, causing deadlock
     if length(values) != length(colIndices)
@@ -144,16 +144,16 @@ function CSRMatrix(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, L
     numCols = numMyElements(getColMap(graph))
     localMatrix = LocalCSRMatrix(numCols, values, localGraph)
 
-    CSRMatrix(rowMap, Nullable(colMap), graph, localMatrix, plist)
+    CSRMatrix(rowMap, colMap, graph, localMatrix, plist)
 end
 
 function CSRMatrix(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
         localMatrix::LocalCSRMatrix{Data, LID}; plist...
         ) where {Data, GID, PID, LID}
-    CSRMatrix(rowMap, colMap, localMatrix, Dict(Array{Tuple{Symbol, Any}}(plist)))
+    CSRMatrix(rowMap, colMap, localMatrix, Dict(plist))
 end
 function CSRMatrix(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
-        localMatrix::LocalCSRMatrix{Data, LID}, plist::Dict{Symbol}
+        localMatrix::LocalCSRMatrix{Data, LID}, plist::Dict
         ) where {Data, GID, PID, LID}
 
     graph = CSRGraph(rowMap, colMap, localMatrix.graph, plist)
@@ -167,17 +167,17 @@ end
 function CSRMatrix(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
         localMatrix::AbstractArray{Data, 2}; plist...
         ) where {Data, GID, PID, LID}
-    CSRMatrix(rowmap, colMap, localMatrix, Dict(Array{Tuple{Symbol, Any}}(plist)))
+    CSRMatrix(rowmap, colMap, localMatrix, Dict(plist))
 end
 function CSRMatrix(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
-        localMatrix::AbstractArray{Data, 2}, plist::Dict{Symbol}
+        localMatrix::AbstractArray{Data, 2}, plist::Dict
         ) where {Data, GID, PID, LID}
     linearIndices = find(x -> x!=0, localMatrix)
     rowIndicesIter, colIndicesIter, valuesIter = zip(
         sort!(collect(zip(ind2sub(size(localMatrix), linearIndices)...,
                           localMatrix[linearIndices])))...)
     rowIndices = collect(rowIndicesIter)
-    rowOffsets = Array{LID, 1}(size(localMatrix, 1)+1)
+    rowOffsets = Array{LID, 1}(undef, size(localMatrix, 1)+1)
     row = 1
     j = 1
     for i in LID(1):LID(length(rowIndices))
@@ -229,8 +229,8 @@ function globalAssemble(matrix::CSRMatrix)
 
     #nonlocalRowMap = BlockMap{GID, PID, LID}()
 
-    numEntPerNonlocalRow = Array{Integer, 1}(numNonLocalRows)
-    myNonlocalGlobalRows = Array{GID, 1}(numNonLocalRows)
+    numEntPerNonlocalRow = Array{Integer, 1}(undef, numNonLocalRows)
+    myNonlocalGlobalRows = Array{GID, 1}(undef, numNonLocalRows)
 
     curPos = 1
     for (key, val) in matrix.nonlocal
@@ -324,7 +324,7 @@ end
 
 
 function fillLocalGraphAndMatrix(matrix::CSRMatrix{Data, GID, PID, LID},
-        plist::Dict{Symbol}) where {Data, GID, PID, LID}
+        plist::Dict) where {Data, GID, PID, LID}
     localNumRows = getLocalNumRows(matrix)
 
     myGraph = matrix.myGraph
@@ -332,22 +332,22 @@ function fillLocalGraphAndMatrix(matrix::CSRMatrix{Data, GID, PID, LID},
 
    matrix.localMatrix.graph.entries = myGraph.localIndices1D
 
-    #most of the debug sections were taken out, they could be re-added wrapped with `if @debug`
+    #most of the debug sections were taken out, they could be re-added wrapped with `if @is_debug_mode`
     if getProfileType(matrix) == DYNAMIC_PROFILE
         numRowEntries = myGraph.numRowEntries
 
-        ptrs = Array{LID, 1}(localNumRows+1)
+        ptrs = Array{LID, 1}(undef, localNumRows+1)
         localTotalNumEntries = computeOffsets(ptrs, numRowEntries)
 
-        inds = Array{LID, 1}(localTotalNumEntries)
+        inds = Array{LID, 1}(undef, localTotalNumEntries)
         #work around type instability required by localMatrix.values
-        vals_concrete = Array{Data, 1}(localTotalNumEntries)
+        vals_concrete = Array{Data, 1}(undef, localTotalNumEntries)
         vals = vals_concrete
 
         localIndices2D = myGraph.localIndices2D
         for row = 1:localNumRows
             numEnt = numRowEnt[row]
-            dest = range(ptrs[row], 1, numEnt)
+            dest = range(ptrs[row], step=1, length=numEnt)
 
             inds[dest] = localIndices2D[row][:]
             vals_concrete[dest] = matrix.values2D[row][:]
@@ -360,13 +360,13 @@ function fillLocalGraphAndMatrix(matrix::CSRMatrix{Data, GID, PID, LID},
 
             localTotalNumEntries = 0
 
-            ptrs = Array{LID, 1}(localNumRows + 1)
+            ptrs = Array{LID, 1}(undef, localNumRows + 1)
             numRowEnt = myGraph.numRowEntries
             localTotalNumEntries = computeOffsets(ptrs, numRowEnt)
 
-            inds = Array{LID, 1}(localTotalNumEntries)
+            inds = Array{LID, 1}(undef, localTotalNumEntries)
             #work around type instability required by localMatrix.values
-            vals_concrete = Array{Data, 1}(localTotalNumEntries)
+            vals_concrete = Array{Data, 1}(undef, localTotalNumEntries)
             vals = vals_concrete
 
             #line 1234
@@ -439,7 +439,7 @@ end
 function getDiagCopyWithoutOffsets(rowMap, colMap, A::CSRMatrix{Data}) where {Data}
     errCount = 0
 
-    D = Array{Data, 1}(getNumLocalRows(A))
+    D = Array{Data, 1}(undef, getNumLocalRows(A))
 
     for localRowIndex = 1:length(D)
         D[localRowIndex] = 0
@@ -582,16 +582,16 @@ function insertGlobalValues(matrix::CSRMatrix{Data, GID, PID, LID}, globalRow::I
 end
 
 
-function resumeFill(matrix::CSRMatrix, plist::Dict{Symbol})
+function resumeFill(matrix::CSRMatrix, plist::Dict)
     resumeFill(matrix.myGraph, plist)
 
     clearGlobalConstants(matrix)
     #graph handles fillComplete variable
 end
 
-fillComplete(matrix::CSRMatrix; plist...) = fillComplete(matrix, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
+fillComplete(matrix::CSRMatrix; plist...) = fillComplete(matrix, Dict(plist))
 
-function fillComplete(matrix::CSRMatrix, plist::Dict{Symbol})
+function fillComplete(matrix::CSRMatrix, plist::Dict)
     #TODO figure out if the second arg should be getColMap(matrix)
     fillComplete(matrix, getRowMap(matrix), getRowMap(matrix), plist)
 end
@@ -599,18 +599,18 @@ end
 function fillComplete(matrix::CSRMatrix{Data, GID, PID, LID},
         domainMap::BlockMap{GID, PID, LID}, rangeMap::BlockMap{GID, PID, LID};
         plist...) where {Data, GID, PID, LID}
-    fillComplete(matrix, domainMap, rangeMap, Dict(Array{Tuple{Symbol, Any}, 1}(plist)))
+    fillComplete(matrix, domainMap, rangeMap, Dict(plist))
 end
 
 function fillComplete(matrix::CSRMatrix{Data, GID, PID, LID},
         domainMap::BlockMap{GID, PID, LID}, rangeMap::BlockMap{GID, PID, LID},
-        plist::Dict{Symbol}) where {Data, GID, PID, LID}
+        plist::Dict) where {Data, GID, PID, LID}
     if isFillComplete(matrix)
         throw(InvalidStateError(
                 "Matrix cannot be fill complete when fillComplete(...) is called"))
     end
 
-    const myGraph = matrix.myGraph
+    myGraph = matrix.myGraph
 
     assertNoNonlocalInserts = get(plist, :noNonlocalChanges, false)
     #skipping sort ghosts stuff
@@ -660,15 +660,15 @@ end
 #### Row Matrix functions ####
 
 getRowMap(mat::CSRMatrix) = mat.rowMap
-hasColMap(mat::CSRMatrix) = !isnull(mat.colMap)
-getColMap(mat::CSRMatrix) = get(mat.colMap)
+hasColMap(mat::CSRMatrix) = mat.colMap != nothing
+getColMap(mat::CSRMatrix) = mat.colMap
 getGraph(mat::CSRMatrix) = mat.myGraph
 
-function setColumnMapMultiVector(mat::CSRMatrix{Data, GID, PID, LID}, mv::Nullable{MultiVector{Data, GID, PID, LID}}) where {Data, GID, PID, LID}
+function setColumnMapMultiVector(mat::CSRMatrix{Data, GID, PID, LID}, mv::Union{MultiVector{Data, GID, PID, LID}, Nothing}) where {Data, GID, PID, LID}
     mat.importMV = mv
 end
 
-function setRowMapMultiVector(mat::CSRMatrix{Data, GID, PID, LID}, mv::Nullable{MultiVector{Data, GID, PID, LID}}) where {Data, GID, PID, LID}
+function setRowMapMultiVector(mat::CSRMatrix{Data, GID, PID, LID}, mv::Union{MultiVector{Data, GID, PID, LID}, Nothing}) where {Data, GID, PID, LID}
     mat.exportMV = mv
 end
 
@@ -753,7 +753,7 @@ function getLocalRowCopy(matrix::CSRMatrix{Data, GID, PID, LID},
     viewRange = 1:rowInfo.numEntries
 
     @inbounds if isLocallyIndexed(myGraph)
-        curLocalIndices = Array{LID}(getLocalView(myGraph, rowInfo)[viewRange])
+        curLocalIndices = Vector{LID}(getLocalView(myGraph, rowInfo)[viewRange])
     else
         colMap = getColMap(myGraph)
         curGlobalIndices = getGlobalView(myGraph, rowInfo)[viewRange]
@@ -847,7 +847,7 @@ function getLocalRowView(matrix::CSRMatrix{Data, GID, PID, LID},
                 * "getLocalalRowCopy(...) instead."))
     end
 
-    const myGraph = matrix.myGraph
+    myGraph = matrix.myGraph
 
     if rowInfo.localRow != 0 && rowInfo.numEntries > 0
         viewRange = LID(1):rowInfo.numEntries
@@ -863,7 +863,7 @@ end
 
 TypeStability.@stable_function [(CSRMatrix{D, G, P, L}, L)
                     for (D, G, P, L) in Base.Iterators.product(
-                        [Float64, Complex64], #Data
+                        [Float64, ComplexF32], #Data
                         [UInt64, Int64, UInt32], #GID
                         [UInt8, Int8, UInt32], #PID
                         [UInt32, Int32]) #LID
@@ -875,10 +875,10 @@ TypeStability.@stable_function [(CSRMatrix{D, G, P, L}, L)
             matrix::CSRMatrix{Data, GID, PID, LID}, localRow::LID
             )::Tuple{Ptr{LID}, Ptr{Data}, LID} where {Data, GID, PID, LID}
         row = LID(localRow)
-        const graph = matrix.myGraph
+        graph = matrix.myGraph
 
         if getProfileType(graph) == STATIC_PROFILE
-            if (@debug) && !hasRowInfo(graph)
+            if (@is_debug_mode) && !hasRowInfo(graph)
                 error("Row Info was deleted, but is still needed")
             end
             offset1D = graph.rowOffsets[row]
@@ -1031,18 +1031,18 @@ end
 TypeStability.@stable_function [(DenseMultiVector{D, G, P, L}, CSRMatrix{D, G, P, L},
                         DenseMultiVector{D, G, P, L}, TransposeMode, D, D)
                     for (D, G, P, L) in Base.Iterators.product(
-                        [Float64, Complex64], #Data
+                        [Float64, ComplexF32], #Data
                         [UInt64, Int64, UInt32], #GID
                         [UInt8, Int8, UInt32], #PID
                         [UInt32, Int32]) #LID
-# createRowInfo has a nessaccery Union variable
-] RegexDict((r"rowValues", Any)) begin
+#some iteration variables are Unions of nothing and a pair of either UInt32 or Int32
+] RegexDict((r"#temp#@_[0-9]+", Union{Nothing, Tuple{UInt32, UInt32}, Tuple{Int32, Int32}})) begin
 function localApply(Y::MultiVector{Data, GID, PID, LID},
         A::CSRMatrix{Data, GID, PID, LID}, X::MultiVector{Data, GID, PID, LID},
         mode::TransposeMode, alpha::Data, beta::Data) where {Data, GID, PID, LID}
 
-    const rawY = getLocalArray(Y)
-    const rawX = getLocalArray(X)
+    rawY = getLocalArray(Y)
+    rawX = getLocalArray(X)
 
 
     #TODO implement this better, can BLAS be used?

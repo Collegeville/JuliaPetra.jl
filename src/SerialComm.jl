@@ -6,9 +6,9 @@ export SerialComm, SerialDistributor
 
 Creates a distributor to work with SerialComm
 """
-type SerialDistributor{GID <: Integer, PID <:Integer, LID <: Integer} <: Distributor{GID, PID, LID}
-    post::Nullable{AbstractArray}
-    reversePost::Nullable{AbstractArray}
+mutable struct SerialDistributor{GID <: Integer, PID <:Integer, LID <: Integer} <: Distributor{GID, PID, LID}
+    post::Union{AbstractArray, Nothing}
+    reversePost::Union{AbstractArray, Nothing}
 
     function SerialDistributor{GID, PID, LID}() where GID <: Integer where PID <: Integer where LID <: Integer
         new(nothing, nothing)
@@ -46,30 +46,30 @@ function resolveReverse(dist::SerialDistributor, exportObjs::AbstractArray{T})::
 end
 
 function resolvePosts(dist::SerialDistributor, exportObjs::AbstractArray)
-    dist.post = Nullable(exportObjs)
+    dist.post = exportObjs
 end
 
 function resolveWaits(dist::SerialDistributor)::AbstractArray
-    if isnull(dist.post)
+    if dist.post == nothing
         throw(InvalidStateError("Must post before waiting"))
     end
 
-    result = get(dist.post)
-    dist.post = Nullable{AbstractArray}()
+    result = dist.post
+    dist.post = nothing
     result
 end
 
 function resolveReversePosts(dist::SerialDistributor, exportObjs::AbstractArray)
-    dist.reversePost = Nullable(exportObjs)
+    dist.reversePost = exportObjs
 end
 
 function resolveReverseWaits(dist::SerialDistributor)::AbstractArray
-     if isnull(dist.reversePost)
+     if dist.reversePost == nothing
         throw(InvalidStateError("Must reverse post before reverse waiting"))
     end
 
-    result = get(dist.reversePost)
-    dist.reversePost = Nullable{AbstractArray}()
+    result = dist.reversePost
+    dist.reversePost = nothing
     result
 end
 

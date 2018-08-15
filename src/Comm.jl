@@ -57,7 +57,7 @@ abstract type Comm{GID <: Integer, PID <:Integer, LID <: Integer}
 end
 
 function Base.show(io::IO, comm::Comm)
-    print(io, split(String(Symbol(typeof(comm))), ".")[2]," with PID ", myPid(comm),
+    print(io, String(Symbol(typeof(comm))), " with PID ", myPid(comm),
                 " and ", numProc(comm), " processes")
 end
 

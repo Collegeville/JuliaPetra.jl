@@ -6,7 +6,7 @@ using TypeStability
 enable_inline_stability_checks(true)
 
 using JuliaPetra
-using Base.Test
+using Test
 
 include("TestUtil.jl")
 
@@ -33,7 +33,7 @@ try
             @testset "Util Tests" begin
                 include("UtilsTests.jl")
             end
-            
+
             @testset "Comm MPI Tests" begin
                 include("MPICommTests.jl")
                 include("MPIBlockMapTests.jl")
@@ -59,7 +59,7 @@ try
                 barrier(comm)
             end
         end
-        info("process $pid test results:")
+        @info "process $pid test results:"
     end
 
 finally

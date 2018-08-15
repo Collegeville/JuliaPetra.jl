@@ -1,4 +1,7 @@
 using TypeStability
+using LinearAlgebra
+
+__precompile__(false)
 
 module JuliaPetra
 

@@ -10,7 +10,7 @@ mutable struct RowInfo{LID <: Integer}
 end
 
 #RowInfo object for re-use
-const rowInfoSpare = Union{Void, RowInfo}[nothing]
+const rowInfoSpare = Union{RowInfo, Nothing}[nothing]
 
 """
     Gets a `RowInfo` object with the given values, reusing an intance if able
@@ -36,7 +36,7 @@ const rowInfoSpare = Union{Void, RowInfo}[nothing]
         end
     end
 
-    (@debug) && (myPid(getComm(graph)) == 1) && println("can't reuse $(@inbounds rowInfoSpare[1])")
+    (@is_debug_mode) && (myPid(getComm(graph)) == 1) && println("can't reuse $(typeof(rowInfoSpare[1]))")
     #couldn't reuse, create new instance
     return RowInfo{LID}(graph, localRow, allocSize, numEntries, offset1D)
 end
@@ -67,7 +67,7 @@ function insertIndicesAndValues(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo
     numNewInds = insertIndices(graph, rowInfo, newInds, lg)
     oldInd = rowInfo.numEntries+1
 
-    oldRowVals[range(oldInd, 1, numNewInds)] = newRowVals[1:numNewInds]
+    oldRowVals[range(oldInd, step=1, length=numNewInds)] = newRowVals[1:numNewInds]
 end
 
 function insertIndices(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo{LID}, newInds::Union{AbstractArray{GID, 1}, AbstractArray{LID, 1}}, lg::IndexType) where {GID, PID, LID}
@@ -84,7 +84,7 @@ function insertIndices(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo{LID}, ne
             lIndView = getLocalView(graph, rowInfo)
             colMap = graph.colMap
 
-            dest = range(rowInfo.numEntries, 1, numNewInds)
+            dest = range(rowInfo.numEntries, step=1, length=numNewInds)
             lIndView[dest] = [lid(colMap, GID(id)) for id in newInds]
         end
     elseif lg == LOCAL_INDICES
@@ -115,8 +115,8 @@ function computeGlobalConstants(graph::CSRGraph{GID, PID, LID}) where {
     #short circuit if already computed
     graph.haveGlobalConstants && return
 
-    if @debug
-        @assert !isnull(graph.colMap) "The graph must have a column map at this point"
+    if @is_debug_mode
+        @assert (graph.colMap != nothing) "The graph must have a column map at this point"
     end
 
     computeLocalConstants(graph)
@@ -145,8 +145,8 @@ function computeLocalConstants(graph::CSRGraph{GID, PID, LID}) where {
     #short circuit if already computed
     graph.haveLocalConstants && return
 
-    if @debug
-        @assert !isnull(graph.colMap) "The graph must have a column map at this point"
+    if @is_debug_mode
+        @assert (graph.colMap != nothing) "The graph must have a column map at this point"
     end
 
     #if graph.haveLocalConstants == false  #short circuited above
@@ -157,16 +157,16 @@ function computeLocalConstants(graph::CSRGraph{GID, PID, LID}) where {
     graph.nodeNumDiags = 0
 
     rowMap = graph.rowMap
-    colMap = get(graph.colMap)
+    colMap = graph.colMap
 
     #indicesAreAllocated => true
     if  hasRowInfo(graph)
-        const numLocalRows = numMyElements(rowMap)
+        numLocalRows = numMyElements(rowMap)
         for localRow = LID(1):numLocalRows
-            const globalRow = gid(rowMap, localRow)
-            const rowLID = lid(colMap, globalRow)
+            globalRow = gid(rowMap, localRow)
+            rowLID = lid(colMap, globalRow)
 
-            const rowInfo = getRowInfo(graph, localRow)
+            rowInfo = getRowInfo(graph, localRow)
             (rowPtr, rowLen) = getLocalViewPtr(graph, rowInfo)
 
 
@@ -177,8 +177,8 @@ function computeLocalConstants(graph::CSRGraph{GID, PID, LID}) where {
                 end
             end
 
-            const smallestCol::LID = unsafe_load(rowPtr, 1)
-            const largestCol::LID  = unsafe_load(rowPtr, rowLen)
+            smallestCol::LID = unsafe_load(rowPtr, 1)
+            largestCol::LID  = unsafe_load(rowPtr, rowLen)
             if smallestCol < localRow
                 graph.upperTriangle = false
             end
@@ -203,7 +203,7 @@ Base.@propagate_inbounds function getRowInfoFromGlobalRow(graph::CSRGraph{GID, P
 end
 
 @inline function getRowInfo(graph::CSRGraph{GID, PID, LID}, row::LID)::RowInfo{LID} where {GID, PID, LID <: Integer}
-    if @debug
+    if @is_debug_mode
         @assert hasRowInfo(graph) "Graph does not have row info anymore.  Should have been caught earlier"
     end
 
@@ -244,7 +244,7 @@ function getLocalView(rowInfo::RowInfo{LID})::AbstractArray{LID, 1} where LID <:
         start = rowInfo.offset1D
         len = rowInfo.allocSize
 
-        view(graph.localIndices1D, range(start, 1, len))
+        view(graph.localIndices1D, range(start, step=1, length=len))
     elseif length(graph.localIndices2D[rowInfo.localRow]) != 0
         graph.localIndices2D[rowInfo.localRow]
     else
@@ -273,14 +273,14 @@ function allocateIndices(graph::CSRGraph{GID, <:Integer, LID},
         GID <: Integer, LID <: Integer}
 
     @assert(isLocallyIndexed(graph) == (lg == LOCAL_INDICES),
-        "Graph is $(isLocallyIndexed(graph)?"":"not ")locally indexed, but lg=$lg")
+        "Graph is $(isLocallyIndexed(graph) ? "" : "not ")locally indexed, but lg=$lg")
     @assert(isGloballyIndexed(graph) == (lg == GLOBAL_INDICES),
-        "Graph is $(isGloballyIndexed(graph)?"":"not ")globally indexed but lg=$lg")
+        "Graph is $(isGloballyIndexed(graph) ? "" : "not ")globally indexed but lg=$lg")
 
     numRows = getLocalNumRows(graph)
 
     if getProfileType(graph) == STATIC_PROFILE
-        rowPtrs = Array{LID, 1}(numRows + 1)
+        rowPtrs = Array{LID, 1}(undef, numRows + 1)
 
         computeOffsets(rowPtrs, numAlloc)
 
@@ -288,21 +288,21 @@ function allocateIndices(graph::CSRGraph{GID, <:Integer, LID},
         numInds = rowPtrs[numRows+1]
 
         if lg == LOCAL_INDICES
-            graph.localIndices1D = Array{LID, 1}(numInds)
+            graph.localIndices1D = Array{LID, 1}(undef, numInds)
         else
-            graph.globalIndices1D = Array{GID, 1}(numInds)
+            graph.globalIndices1D = Array{GID, 1}(undef, numInds)
         end
         graph.storageStatus = STORAGE_1D_UNPACKED
     else
         if lg == LOCAL_INDICES
-            graph.localIndices2D = Array{Array{LID, 1}, 1}(numRows)
+            graph.localIndices2D = Array{Array{LID, 1}, 1}(undef, numRows)
             for row = 1:numRows
-                graph.localIndices2D[row] = Array{LID, 1}(numAllocPerRow(row))
+                graph.localIndices2D[row] = Array{LID, 1}(undef, numAllocPerRow(row))
             end
         else #lg == GLOBAL_INDICES
-            graph.globalIndices2D = Array{Array{GID, 1}, 1}(numRows)
+            graph.globalIndices2D = Array{Array{GID, 1}, 1}(undef, numRows)
             for row = 1:numRows
-                graph.globalIndices2D[row] = Array{GID, 1}(numAllocPerRow(row))
+                graph.globalIndices2D[row] = Array{GID, 1}(undef, numAllocPerRow(row))
             end
         end
         graph.storageStatus = STORAGE_2D
@@ -322,16 +322,16 @@ end
 
 function makeImportExport(graph::CSRGraph{GID, PID, LID}) where {
         GID <: Integer, PID <: Integer, LID <: Integer}
-    @assert !isnull(graph.colMap) "Cannot make imports and exports without a column map"
+    @assert (graph.colMap != nothing) "Cannot make imports and exports without a column map"
 
-    if isnull(graph.importer)
-        if get(graph.domainMap) !== get(graph.colMap) && !sameAs(get(graph.domainMap), get(graph.colMap))
-            graph.importer = Import(get(graph.domainMap), get(graph.colMap))
+    if graph.importer == nothing
+        if !sameAs(graph.domainMap, graph.colMap)
+            graph.importer = Import(graph.domainMap, graph.colMap)
         end
     end
 
-    if isnull(graph.exporter)
-        if get(graph.rangeMap) !== graph.rowMap && !sameAs(get(graph.rangeMap), graph.rowMap)
+    if graph.exporter == nothing
+        if !sameAs(graph.rangeMap, graph.rowMap)
             graph.exporter = Export(graph.rowMap, graph.rangeMap)
         end
     end
@@ -339,16 +339,16 @@ end
 
 #TODO migrate this to testing
 function checkInternalState(graph::CSRGraph)
-    if @debug
-        const localNumRows = getLocalNumRows(graph)
+    if @is_debug_mode
+        localNumRows = getLocalNumRows(graph)
 
         @assert(isFillActive(graph) != isFillComplete(graph),
             "Graph must be either fill active or fill "
-            * "complete$(isFillActive(graph)?"not both":"").")
+            * "complete$(isFillActive(graph) ? "not both" : "").")
         @assert(!isFillComplete(graph)
-                || (!isnull(graph.colMap)
-                    && !isnull(graph.domainMap)
-                    && !isnull(graph.rangeMap)),
+                || (graph.colMap != nothing
+                    && graph.domainMap != nothing
+                    && graph.rangeMap != nothing),
             "Graph is fill complete, but at least one of {column, range, domain} map is null")
         @assert((graph.storageStatus != STORAGE_1D_PACKED
                     && graph.storageStatus != STORAGE_1D_UNPACKED)
@@ -459,13 +459,13 @@ function checkInternalState(graph::CSRGraph)
         end
 
         #check actual allocations
-        const lenRowOffsets = length(graph.rowOffsets)
+        lenRowOffsets = length(graph.rowOffsets)
         if graph.pftype == STATIC_PROFILE && lenRowOffsets != 0
             @assert(lenRowOffsets == localNumRows+1,
                 "Graph has static profile, rowOffsets has a nonzero length "
                 * "($lenRowOffsets), but is not equal to the "
                 * "local number of rows plus one ($(localNumRows+1))")
-            const actualNumAllocated = graph.rowOffsets[localNumRows+1]
+            actualNumAllocated = graph.rowOffsets[localNumRows+1]
             @assert(!isLocallyIndexed(graph)
                 || length(graph.localIndices1D) == actualNumAllocated,
                 "Graph has static profile, rowOffsets has a nonzero length, "
@@ -532,11 +532,11 @@ end
 function setDomainRangeMaps(graph::CSRGraph{GID, PID, LID}, domainMap::BlockMap{GID, PID, LID}, rangeMap::BlockMap{GID, PID, LID}) where {GID, PID, LID}
     if graph.domainMap != domainMap
         graph.domainMap = domainMap
-        graph.importer = Nullable{Import{GID, PID, LID}}()
+        graph.importer = nothing
     end
     if graph.rangeMap != rangeMap
         graph.rangeMap = rangeMap
-        graph.exporter = Nullable{Export{GID, PID, LID}}()
+        graph.exporter = nothing
     end
 end
 
@@ -554,12 +554,12 @@ function globalAssemble(graph::CSRGraph)
 
     #skipping: nonlocalRowMap = null
 
-    numEntPerNonlocalRow = Array{LID, 1}(myNumNonlocalRows)
-    myNonlocalGlobalRows = Array{GID, 1}(myNumNonlocalRows)
+    numEntPerNonlocalRow = Array{LID, 1}(undef, myNumNonlocalRows)
+    myNonlocalGlobalRows = Array{GID, 1}(undef, myNumNonlocalRows)
 
     for (i, (key, val)) = zip(1:length(graph.nonlocals), graph.nonlocals)
         myNonlocalGlobalRows[i] = key
-        const globalCols = val #const b/c changing in place
+        globalCols = val
         sort!(globalCols)
         globalCols[:] = unique(globalCols)
         numEntPerNonlocalRow[i] = length(globalCols)
@@ -579,8 +579,8 @@ function globalAssemble(graph::CSRGraph)
         insertGlobalIndices(nonLocalGraph, globalRow, numEnt, globalColumns)
     end
 
-    const origRowMap = graph.rowMap
-    const origRowMapIsOneToOne = isOneToOne(origRowMap)
+    origRowMap = graph.rowMap
+    origRowMapIsOneToOne = isOneToOne(origRowMap)
 
     if origRowMapIsOneToOne
         exportToOrig = Export(nonlocalRowMap, origRowMap)
@@ -606,7 +606,7 @@ end
 function makeIndicesLocal(graph::CSRGraph{GID, PID, LID}) where {GID, PID, LID}
     @assert hasColMap(graph) "The graph does not have a column map yet.  This method should never be called in that case"
 
-    colMap = get(graph.colMap)
+    colMap = graph.colMap
     localNumRows = getLocalNumRows(graph)
 
     if isGloballyIndexed(graph) && localNumRows != 0
@@ -620,8 +620,8 @@ function makeIndicesLocal(graph::CSRGraph{GID, PID, LID}) where {GID, PID, LID}
                 @assert(length(graph.rowOffsets) != 0,
                     "length(graph.rowOffsets) == 0.  "
                     * "This should never happen at this point")
-                const numEnt = graph.rowOffsets[localNumRows+1]
-                graph.localIndices1D = Array{LID, 1}(numEnt)
+                numEnt = graph.rowOffsets[localNumRows+1]
+                graph.localIndices1D = Array{LID, 1}(undef, numEnt)
             end
 
 
@@ -640,15 +640,15 @@ function makeIndicesLocal(graph::CSRGraph{GID, PID, LID}) where {GID, PID, LID}
                         * "do not live in the column map on this process"))
             end
 
-            graph.globalIndices1D = Array{LID, 1}(0)
+            graph.globalIndices1D = Array{LID, 1}(undef, 0)
         else #graph has dynamic profile
-            graph.localIndices2D = Array{Array{LID, 1}, 1}(localNumRows)
+            graph.localIndices2D = Array{Array{LID, 1}, 1}(undef, localNumRows)
             for localRow = 1:localNumRows
                 if length(graph.globalIndices2D[localRow]) != 0
                     globalIndices = graph.globalIndices2D[localRow]
 
                     graph.localIndices2D[localRow] = [lid(colMap, gid) for gid in globalIndices]
-                    if @debug
+                    if @is_debug_mode
                         @assert(minimum(graph.localIndices2D[localRow]) > 0,
                             "Globalal indices were not found in the column Map")
                     end
@@ -722,7 +722,7 @@ macro insertIndicesImpl(indicesType, innards)
             setLocallyModified(graph)
 
             recycleRowInfo(rowInfo)
-            if @debug
+            if @is_debug_mode
                 chkNewNumEntries = getNumEntriesInLocalRow(graph, myRow)
                 @assert(chkNewNumEntries == newNumEntries,
                     "Internal Logic error: chkNewNumEntries = $chkNewNumEntries "
@@ -795,7 +795,7 @@ function insertGlobalIndicesImpl(graph::CSRGraph{GID, PID, LID},
         if length(graph.globalIndices) != 0
             curOffset = rowInfo.offset1D
             globalIndicesCur = view(graph.globalIndices1D,
-                range(curOffset, 1, rowInfo.numEntries))
+                range(curOffset, step=1, length=rowInfo.numEntries))
             globalIndicesNew = view(graph.globalIndices1D,
                 curOffset+rowInfo.numEntries+1 : currOffset+rowInfo.allocSize)
         else
@@ -823,7 +823,7 @@ function insertGlobalIndicesImpl(graph::CSRGraph{GID, PID, LID},
         graph.nodeNumEntries += numNewToInsert
         setLocallyModified(graph)
 
-        if @debug
+        if @is_debug_mode
             newNumEntries = rowInfo.numEntries + numNewToInsert
             chkNewNumEntries = getNumEntiresInLocalRow(graph, myRow)
             @assert(chkNewNumEntries == newNumEntries,
@@ -838,30 +838,28 @@ end
 
 #internal implementation of makeColMap, needed to handle some return and debuging stuff
 #returns Tuple(error, colMap)
-function __makeColMap(graph::CSRGraph{GID, PID, LID}, wrappedDomMap::Nullable{BlockMap{GID, PID, LID}}
+function __makeColMap(graph::CSRGraph{GID, PID, LID}, domMap::Union{BlockMap{GID, PID, LID}, Nothing}
         ) where {GID, PID, LID}
     error = false
 
-    if isnull(wrappedDomMap)
-        return  Nullable{BlockMap{GID, PID, LID}}()
+    if domMap == nothing
+        return nothing
     end
-    domMap = get(wrappedDomMap)
 
     if isLocallyIndexed(graph)
-        wrappedColMap = graph.colMap
+        colMap = graph.colMap
 
-        if isnull(wrappedColMap)
+        if colMap == nothing
             warn("$(myPid(getComm(graph))): The graph is locally indexed, but does not have a column map")
 
             error = true
             myColumns = GID[]
         else
-            colMap = get(wrappedColMap)
             if linearMap(colMap) #i think isContiguous(map) <=> linearMap(map)?
                 numCurGIDs = numMyElements(colMap)
                 myFirstGlobalIndex = minMyGIDs(colMap)
 
-                myColumns = collect(range(myFirstGlobalIndex, 1, numCurGIDs))
+                myColumns = collect(range(myFirstGlobalIndex, step=1, length=numCurGIDs))
             else
                 myColumns = copy(myGlobalElements(colMap))
             end
@@ -870,7 +868,7 @@ function __makeColMap(graph::CSRGraph{GID, PID, LID}, wrappedDomMap::Nullable{Bl
     end
 
     #else if graph.isGloballyIndexed
-    const localNumRows = getLocalNumRows(graph)
+    localNumRows = getLocalNumRows(graph)
 
     numLocalColGIDs = 0
 
@@ -878,7 +876,7 @@ function __makeColMap(graph::CSRGraph{GID, PID, LID}, wrappedDomMap::Nullable{Bl
     remoteGIDSet = Set()
 
     #if rowMap != null
-    const rowMap = graph.rowMap
+    rowMap = graph.rowMap
 
     for localRow = 1:localNumRows
         globalRow = gid(rowMap, localRow)
@@ -914,17 +912,17 @@ function __makeColMap(graph::CSRGraph{GID, PID, LID}, wrappedDomMap::Nullable{Bl
             return (error, domMap)
         end
     end
-    myColumns = Vector{GID}(numLocalColGIDs+numRemoteColGIDs)
+    myColumns = Vector{GID}(undef, numLocalColGIDs+numRemoteColGIDs)
     localColGIDs  = view(myColumns, 1:numLocalColGIDs)
     remoteColGIDs = view(myColumns, numLocalColGIDs+1:numLocalColGIDs+numRemoteColGIDs)
 
     remoteColGIDs[:] = [el for el in remoteGIDSet]
 
-    remotePIDs = Array{PID, 1}(numRemoteColGIDs)
+    remotePIDs = Array{PID, 1}(undef, numRemoteColGIDs)
 
     remotePIDs = remoteIDList(domMap, remoteColGIDs)[1]
     if any(remotePIDs .== 0)
-        if @debug
+        if @is_debug_mode
             warn("Some column indices are not in the domain Map")
         end
         error = true
@@ -939,7 +937,7 @@ function __makeColMap(graph::CSRGraph{GID, PID, LID}, wrappedDomMap::Nullable{Bl
     numDomainElts = numMyElements(domMap)
     if numLocalColGIDs == numDomainElts
         if linearMap(domMap) #I think isContiguous() <=> linearMap()
-            localColGIDs[1:numLocalColGIDs] = range(minMyGID(domMap), 1, numLocalColGIDs)
+            localColGIDs[1:numLocalColGIDs] = range(minMyGID(domMap), step=1, length=numLocalColGIDs)
         else
             domElts = myGlobalElements(domMap)
             localColGIDs[1:length(domElts)] = domElts
@@ -967,7 +965,7 @@ function __makeColMap(graph::CSRGraph{GID, PID, LID}, wrappedDomMap::Nullable{Bl
         end
 
         if numLocalCount != numLocalColGIDs
-            if @debug
+            if @is_debug_mode
                 warn("$(myPid(getComm(graph))): numLocalCount = $numLocalCount "
                     * "!= numLocalColGIDs = $numLocalColGIDs.  "
                     * "This should not happen.")

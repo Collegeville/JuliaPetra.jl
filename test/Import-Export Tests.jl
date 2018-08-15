@@ -25,24 +25,20 @@ function basicTest(impor)
     @test true == data.isLocallyComplete
 end
 
-#for scoping purposes
-impor = Array{Import, 1}(1)
-expor = Array{Export, 1}(1)
-
-#ensure at least a few lines, each starting with the PID
-#Need to escape coloring:  .*
-debugregex = Regex("^(?:.*INFO: .*$(myPid(serialComm)): .+\n){2,}.*\$")
+#ensure at least a one line, starting with the PID
+debugregex = Regex("^$(myPid(serialComm)):.+")
 
 # basic import
-@test_warn debugregex impor[1] = Import(srcMap, desMap)
-basicTest(impor[1])
+impor = (@test_logs (:info, debugregex) match_mode=:any Import(srcMap, desMap))
+basicTest(impor)
 
-@test_warn debugregex impor[1] = Import(srcMap, desMap, Nullable{AbstractArray{Bool}}())
-basicTest(impor[1])
+impor = (@test_logs (:info, debugregex) match_mode=:any Import(srcMap, desMap, nothing))
+basicTest(impor)
 
 
 # basic export
-@test_warn debugregex expor[1] = Export(srcMap, desMap)
-basicTest(expor[1])
-@test_warn debugregex expor[1] = Export(srcMap, desMap, Nullable{AbstractArray{Bool}}())
-basicTest(expor[1])
+expor = (@test_logs (:info, debugregex) match_mode=:any Export(srcMap, desMap))
+basicTest(expor)
+
+expor = (@test_logs (:info, debugregex) match_mode=:any Export(srcMap, desMap, nothing))
+basicTest(expor)

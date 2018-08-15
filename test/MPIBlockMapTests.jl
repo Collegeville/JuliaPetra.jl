@@ -60,7 +60,7 @@ macro MPIMapTests()
     @test ([1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4],
             [1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5]) == remoteIDList(map, collect(1:20))
 
-    @test collect((1:5) + 5*(pid - 1)) == myGlobalElementIDs(map)
+    @test collect((1:5) .+ 5*(pid - 1)) == myGlobalElementIDs(map)
 end
 
 map = BlockMap(20, comm)
@@ -69,5 +69,5 @@ map = BlockMap(20, comm)
 map = BlockMap(20, 5, comm)
 @MPIMapTests
 
-map = BlockMap(5*numProc(comm), collect((1:5) + 5*(pid - 1)), comm)
+map = BlockMap(5*numProc(comm), collect((1:5) .+ 5*(pid - 1)), comm)
 @MPIMapTests

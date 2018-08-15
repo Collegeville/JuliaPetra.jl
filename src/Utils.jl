@@ -6,7 +6,7 @@ Returns the global debug value
 
 Has an optional ignored argument
 """
-macro debug()
+macro is_debug_mode()
     if isdefined(Main, :globalDebug)
         Main.globalDebug::Bool
     else
@@ -36,7 +36,7 @@ function computeOffsets(rowPtrs::AbstractArray{<: Integer, 1}, numEnts::Array{<:
         @inbounds rowPtrs[i] = sum
         @inbounds sum += numEnts[i]
     end
-    @inbounds rowPtrs[numCounts+1:numOffsets] = sum
+    @inbounds rowPtrs[numCounts+1:numOffsets] .= sum
     sum-1
 end
 

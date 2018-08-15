@@ -17,7 +17,7 @@ end
 function MPIComm(GID::Type, PID::Type, LID::Type)
     MPIInit()
     comm = MPIComm{GID, PID, LID}(MPI.COMM_WORLD)
-    
+
     comm
 end
 
@@ -34,7 +34,7 @@ function MPIInit()
     if MPINeedsInitialization
         MPI.Init()
         atexit(() -> MPI.Finalize())
-            
+
         MPINeedsInitialization = false
     end
 end

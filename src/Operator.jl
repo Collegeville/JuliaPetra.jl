@@ -38,7 +38,7 @@ Operator is a description of all types that have a specific set of methods.
 All Operator types must implement the following methods (with Op standing in for the Operator):
 
     apply!(Y::MultiVector{Data, GID, PID, LID}, operator::Op{Data, GID, PID, LID}, X::MultiVector{Data, GID, PID, LID}, mode::TransposeMode, alpha::Data, beta::Data)
-Computes ``Y = α\cdot A^{mode}\cdot X + β\cdot Y``, with the following exceptions
+Computes ``Y = α\\cdot A^{mode}\\cdot X + β\\cdot Y``, with the following exceptions
 * If beta == 0, apply MUST overwrite Y, so that any values in Y (including NaNs) are ignored.
 * If alpha == 0, apply MAY short-circuit the operator, so that any values in X (including NaNs) are ignored
 
@@ -56,7 +56,7 @@ const Operator = Any #allow Operator to be documented
     apply!(Y::MultiVector, operator, X::MultiVector, mode::TransposeMode=NO_TRANS, alpha=1, beta=0)
     apply!(Y::MultiVector, operator, X::MultiVector, alpha=1, beta=0)
 
-Computes ``Y = α\cdot A^{mode}\cdot X + β\cdot Y``, with the following exceptions:
+Computes ``Y = α\\cdot A^{mode}\\cdot X + β\\cdot Y``, with the following exceptions:
 * If beta == 0, apply MUST overwrite Y, so that any values in Y (including NaNs) are ignored.
 * If alpha == 0, apply MAY short-circuit the operator, so that any values in X (including NaNs) are ignored
 """

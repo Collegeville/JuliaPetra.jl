@@ -1,7 +1,7 @@
 n = 4
 
 srcMap = BlockMap(4*n, comm)
-desMap = BlockMap(n*numProc(comm), collect((1:n) + n*(pid%4)), comm)
+desMap = BlockMap(n*numProc(comm), collect((1:n) .+ n*(pid%4)), comm)
 
 function basicMPITest(impor)
     if isa(impor, Import)
@@ -19,23 +19,19 @@ function basicMPITest(impor)
     @test true == data.isLocallyComplete
 end
 
-#for scoping purposes
-impor = Array{Import, 1}(1)
-expor = Array{Export, 1}(1)
-
 #ensure at least a few lines, each starting with the PID
 #Need to escape coloring:  .*
 #"^(?:.*INFO: .*$pid: .+\n){2,}.*\$"
-debugregex = Regex("^(?:.*INFO: .*$pid: .+\n){2,}.*\$")
+debugregex = Regex("^$pid: .+")
 
 # basic import
-@test_warn debugregex impor[1] = Import(srcMap, desMap)
-basicMPITest(impor[1])
-@test_warn debugregex impor[1] = Import(srcMap, desMap, Nullable{AbstractArray{UInt16}}())
-basicMPITest(impor[1])
+impor = (@test_logs (:info, debugregex) match_mode=:any Import(srcMap, desMap))
+basicMPITest(impor)
+impor = (@test_logs (:info, debugregex) match_mode=:any Import(srcMap, desMap, nothing))
+basicMPITest(impor)
 
 # basic export
-@test_warn debugregex expor[1] = Export(srcMap, desMap)
-basicMPITest(expor[1])
-@test_warn debugregex expor[1] = Export(srcMap, desMap, Nullable{AbstractArray{UInt16}}())
-basicMPITest(expor[1])
+expor = (@test_logs (:info, debugregex) match_mode=:any Export(srcMap, desMap))
+basicMPITest(expor)
+expor = (@test_logs (:info, debugregex) match_mode=:any Export(srcMap, desMap, nothing))
+basicMPITest(expor)

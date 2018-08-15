@@ -3,7 +3,7 @@ export DenseMultiVector
 """
 DenseMultiVector represents a dense multi-vector.  Note that all the vectors in a single DenseMultiVector are the same size
 """
-type DenseMultiVector{Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer} <: MultiVector{Data, GID, PID, LID}
+mutable struct DenseMultiVector{Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer} <: MultiVector{Data, GID, PID, LID}
     data::Array{Data, 2} # data[1, 2] is the first element of the second vector
     numVectors::LID
 
@@ -22,7 +22,7 @@ function DenseMultiVector{Data}(map::BlockMap{GID, PID, LID}, numVecs::Integer, 
     if zeroOut
         data = zeros(Data, (localLength, numVecs))
     else
-        data = Array{Data, 2}(localLength, numVecs)
+        data = Array{Data, 2}(undef, localLength, numVecs)
     end
     DenseMultiVector{Data, GID, PID, LID}(data, numVecs, map)
 end
@@ -51,8 +51,8 @@ function Base.copy(vect::DenseMultiVector{Data, GID, PID, LID})::DenseMultiVecto
     DenseMultiVector{Data, GID, PID, LID}(copy(vect.data), vect.numVectors, vect.map)
 end
 
-function Base.copy!(dest::DenseMultiVector{Data, GID, PID, LID}, src::DenseMultiVector{Data, GID, PID, LID})::DenseMultiVector{Data, GID, PID, LID} where {Data, GID, PID, LID}
-    copy!(dest.data, src.data)
+function Base.copyto!(dest::DenseMultiVector{Data, GID, PID, LID}, src::DenseMultiVector{Data, GID, PID, LID})::DenseMultiVector{Data, GID, PID, LID} where {Data, GID, PID, LID}
+    copyto!(dest.data, src.data)
     dest.numVectors = src.numVectors
     dest.map = src.map
 

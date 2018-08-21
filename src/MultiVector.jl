@@ -11,7 +11,6 @@ export dot, norm, copyto!
 
 # need to add methods to these functions
 import LinearAlgebra: dot, norm
-import Base: copyto!
 
 """
 Required methods:
@@ -266,7 +265,7 @@ function Base.setindex!(A::MultiVector, v, row::Integer, col::Integer)
         end
     end
 
-    @inbounds setEntry(A, lRow, col, v)
+    @inbounds getLocalArray(A)[lRow, 1] = v
     v
 end
 
@@ -283,7 +282,7 @@ function Base.setindex!(A::MultiVector, v, i::Integer)
         end
     end
 
-    @inbounds setEntry(A, lRow, 1, v)
+    @inbounds getLocalArray(A)[lRow, 1] = v
     v
 end
 
@@ -299,15 +298,9 @@ end
 
 struct MultiVectorBroadcastStyle <: Broadcast.AbstractArrayStyle{2} end
 Base.BroadcastStyle(::Type{<:MultiVector}) = MultiVectorBroadcastStyle()
-Base.BroadcastStyle(::MultiVectorBroadcastStyle, ::Broadcast.AbstractArrayStyle) = MultiVectorBroadcastStyle
+Base.BroadcastStyle(::MultiVectorBroadcastStyle, ::Broadcast.AbstractArrayStyle) = MultiVectorBroadcastStyle()
+Base.Broadcast.BroadcastStyle(::MultiVectorBroadcastStyle, ::Broadcast.DefaultArrayStyle) = MultiVectorBroadcastStyle()
 
-
-function Base.similar(bc::Broadcast.Broadcasted{MultiVectorBroadcastStyle}, ::Type{ElType}) where ElType
-    mv = find_mv(bc)
-    #TODO support other MultiVectors to broadcast into?
-    #TODO support mixed Data
-    DenseMultiVector{eltype(mv)}(getMap(mv), numVectors(mv), false)
-end
 
 "`A = find_mv(As)` returns the first MultiVector among the arguments."
 find_mv(bc::Base.Broadcast.Broadcasted) = find_mv(bc.args)
@@ -317,10 +310,22 @@ find_mv(a::MultiVector, rest) = a
 find_mv(::Any, rest) = find_mv(rest)
 
 
-@inline function copyto!(dest::MultiVector, bc::Broadcast.Broadcasted{MultiVectorBroadcastStyle})
+@inline function Broadcast.instantiate(bc::Broadcast.Broadcasted{MultiVectorBroadcastStyle})
+    bc
+end
+
+@inline function Base.copy(bc::Broadcast.Broadcasted{MultiVectorBroadcastStyle})
     flattened = Broadcast.flatten(bc)
     args = map(mv->if isa(mv, MultiVector) getLocalArray(mv) else mv end, flattened.args)
-    broadcast!(flattened.f, args)
+    result = broadcast(flattened.f, args...)
+    mv = find_mv(flattened.args)
+    DenseMultiVector(getMap(mv), result)
+end
+
+@inline function Base.copyto!(dest::MultiVector, bc::Broadcast.Broadcasted{MultiVectorBroadcastStyle})
+    flattened = Broadcast.flatten(bc)
+    args = map(mv->if isa(mv, MultiVector) getLocalArray(mv) else mv end, flattened.args)
+    broadcast!(flattened.f, getLocalArray(dest), args...)
     flattened.args[1]
 end
 

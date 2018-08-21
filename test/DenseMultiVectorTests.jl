@@ -80,6 +80,17 @@ function denseMultiVectorTests(comm::Comm{UInt64, UInt16, UInt32})
     fill!(vect, 8)
     @test 8*ones(Float64, (n, 3)) == vect.data
 
+    #test broadcast
+    vect = DenseMultiVector(curMap, ones(Float64, n, 3))
+    fours = fill(4, (n, 3))
+    vect2 = vect .+ fours
+    @test fill(5.0, (n, 3)) == vect2.data
+    @test fill(1.0, (n, 3)) == vect.data
+
+    @. vect2 = vect * 3
+    @test fill(3.0, (n, 3)) == vect2.data
+    @test fill(1.0, (n, 3)) == vect.data
+
 
     #test comm reduce
     arr = (10^pid)*ones(Float64, n, 3)

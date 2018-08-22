@@ -1,8 +1,6 @@
 using TypeStability
 using LinearAlgebra
 
-__precompile__(false)
-
 module JuliaPetra
 
 # Internal Utilities
@@ -24,10 +22,6 @@ include("DirectoryMethods.jl")
 
 # Communication implementations
 include("SerialComm.jl")
-
-include("MPIUtil.jl")
-include("MPIComm.jl")
-include("MPIDistributor.jl")
 
 
 # Data interface
@@ -58,5 +52,15 @@ include("CSRGraphInternalMethods.jl")
 include("CSRGraphExternalMethods.jl")
 
 include("CSRMatrix.jl")
+
+
+
+function __init__()
+    #code dependant on MPI.jl can't be precompiled
+    sourcedir = dirname(@__FILE__)
+    include(joinpath(sourcedir, "MPIUtil.jl"))
+    include(joinpath(sourcedir, "MPIComm.jl"))
+    include(joinpath(sourcedir, "MPIDistributor.jl"))
+end
 
 end # module

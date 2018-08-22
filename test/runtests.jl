@@ -1,64 +1,20 @@
-#have debug enabled while running tests
-globalDebug = true
-
-using TypeStability
-#check stability while running tests
-enable_inline_stability_checks(true)
-
-using JuliaPetra
-using Test
-
-@. ARGS = lowercase(ARGS)
-# check for command line arguments requesting parts to not be tested
-const noMPI = in("--mpi", ARGS) #don't run multi-process tests
-const noComm = in("--comm", ARGS) #don't run comm framework tests
-const noDataStructs = in("--data", ARGS) #don't run tests on data structures
-const noUtil = in("--util", ARGS) #don't run tests on Misc Utils
-
-include("TestUtil.jl")
+#due to compile time settings, all the tests need to be run with compiled-modules=no
 
 
-@testset "Serial tests" begin
+code = """
+    $(Base.load_path_setup_code(false))
+    cd("$(pwd())")
+    include("mpi-runtests.jl")
+"""
 
-    #a generic serial comm for the tests that need to be called with a comm object
-    serialComm = SerialComm{UInt64, UInt16, UInt32}()
-
-    if !noUtil
-        @testset "Util Tests" begin
-            include("UtilsTests.jl")
-        end
-    end
-
-    if !noComm
-        @testset "Comm Tests" begin
-            include("SerialCommTests.jl")
-            include("Import-Export Tests.jl")
-            include("BlockMapTests.jl")
-
-            include("LocalCommTests.jl")
-            runLocalCommTests(serialComm)
-
-            include("BasicDirectoryTests.jl")
-            basicDirectoryTests(serialComm)
-        end
-    end
-
-    if !noDataStructs
-        @testset "Data Structure Tests" begin
-            include("DenseMultiVectorTests.jl")
-            denseMultiVectorTests(serialComm)
-
-            include("SparseRowViewTests.jl")
-            include("LocalCSRGraphTests.jl")
-            include("LocalCSRMatrixTests.jl")
-
-            include("CSRGraphTests.jl")
-            include("CSRMatrixTests.jl")
-        end
-    end
-end
-
-# do MPI tests at the end so that other errors are found faster since the MPI tests take the longest
-if !noMPI
-    include("MPITestsStarter.jl")
-end
+run(```
+    mpiexec -n 4
+        $(Base.julia_cmd())
+        --code-coverage=$(Bool(Base.JLOptions().code_coverage) ? "user" : "none")
+        --color=$(Base.have_color ? "yes" : "no")
+        --compiled-modules=no
+        --check-bounds=yes
+        --startup-file=$(Base.JLOptions().startupfile == 1 ? "yes" : "no")
+        --track-allocation=$(("none", "user", "all")[Base.JLOptions().malloc_log + 1])
+        --eval $code
+```)

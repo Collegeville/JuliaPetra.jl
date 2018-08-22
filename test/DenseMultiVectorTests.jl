@@ -1,6 +1,6 @@
 #these tests are used for test DenseMultiVector under both serial and MPI comms
 
-function denseMultiVectorTests(comm::Comm{UInt64, UInt16, UInt32})
+function denseMultiVectorTests(comm::Comm)
     #number of elements in vectors
     n = 8
 

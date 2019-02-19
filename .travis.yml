@@ -1,0 +1,15 @@
+language: julia
+
+julia:
+  - 1.0
+  - 1.1
+  - nightly
+ 
+ 
+notifications:
+  email:
+    recipients:
+      - nslindquist@csbsju.edu
+    on_success: never
+    on_failure: always
+    

@@ -9,6 +9,9 @@ julia:
   - 1.1
   - nightly
  
+matrix:
+  allow_failures:
+  - julia: nightly
  
 notifications:
   email:
@@ -17,3 +20,24 @@ notifications:
     on_success: never
     on_failure: always
     
+    
+#MPI.jl needs mpi binaries plus compilers avalible 
+addons:
+  apt:
+    packages:
+      - gfortran
+      - mpich
+      - libmpich-dev
+      
+before_script:
+  - |
+    if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+      brew update
+      brew upgrade cmake
+      brew cask uninstall oclint # Prevent conflict with gcc
+      brew install mpich
+    fi
+    
+before_install:
+  - export CC=mpicc
+  - export FC=mpif90

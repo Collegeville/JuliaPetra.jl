@@ -1,5 +1,7 @@
 # JuliaPetra
 
+[![Build Status](https://travis-ci.org/Collegeville/JuliaPetra.jl.svg?branch=master)](https://travis-ci.org/Collegeville/JuliaPetra.jl)
+
 This is an implmentation of the Petra Object Model in Julia.
 It is a basic framework for sparse linear algebra
 

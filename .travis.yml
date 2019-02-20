@@ -21,6 +21,10 @@ notifications:
     on_failure: always
     
     
+cache:
+  directories:
+    - /home/travis/.julia/packages/MPI/
+    
 #MPI.jl needs mpi binaries plus compilers avalible 
 addons:
   apt:

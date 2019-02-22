@@ -12,5 +12,5 @@ makedocs(
 
 
 deploydocs(
-    repo = "github.com/collegeville/JuliaPetra.jl.git"
+    repo = "github.com/Collegeville/JuliaPetra.jl.git"
 )

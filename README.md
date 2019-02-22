@@ -2,8 +2,8 @@
 
 [![Build Status](https://travis-ci.org/Collegeville/JuliaPetra.jl.svg?branch=master)](https://travis-ci.org/Collegeville/JuliaPetra.jl)
 
-This is an implmentation of the Petra Object Model in Julia.
-It is a basic framework for sparse linear algebra
+This is an implmentation of [Trilinos's Petra Object Model](https://trilinos.github.io/data_service.html#trilinos-packages) in Julia.
+It is a basic framework for sparse linear algebra.
 
 ## License
 

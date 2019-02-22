@@ -24,7 +24,7 @@ being sent by this processor.
 
     resolvePosts(dist::DistributorImpl, exportObjs::AbstractArray)
 Post buffer of export objects.  Other, local work can be done before resolving
-the waits.  Otherwise, as [`do(::DistributorImpl, ::Array{T})::Array{T}`](@ref).
+the waits.  Otherwise, as [`resolve`](@ref).
 
     resolveWaits(dist::DistributorImpl)::AbstractArray
 Wait on a set of posts
@@ -32,7 +32,7 @@ Wait on a set of posts
     resolveReversePosts(dist::DistributorImpl, exportObjs::AbstractArray)
 Do reverse post of buffer of export objects Other, local work can be done before
 resolving the waits.  Otherwise, as
-[`doReverse(::DistributorImpl, ::AbstractArray{T})::AbstractArray{T}`](@ref).
+[`resolveReverse`](@ref).
 
     resolveReverseWaits(dist::DistributorImpl)::AbstractArray
 Wait on a set of reverse posts.
@@ -93,7 +93,7 @@ end
     resolvePosts(dist::Distributor, exportObjs::AbstractArray)
 
 Post buffer of export objects.  Other, local work can be done before resolving
-the waits.  Otherwise, as [`do(::DistributorImpl, ::Array{T})::Array{T}`](@ref).
+the waits.  Otherwise, as [`resolve`](@ref).
 """
 function resolvePosts end
 
@@ -108,7 +108,7 @@ function resolveWaits end
     resolveReversePosts(dist::Distributor, exportObjs::AbstractArray)
 Do reverse post of buffer of export objects Other, local work can be done before
 resolving the waits.  Otherwise, as
-[`doReverse(::DistributorImpl, ::AbstractArray{T})::AbstractArray{T}`](@ref).
+[`resolveReverse`](@ref).
 """
 function resolveReversePosts end
 

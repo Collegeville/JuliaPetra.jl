@@ -13,6 +13,8 @@ export dot, norm, copyto!
 import LinearAlgebra: dot, norm
 
 """
+`MultiVector`s represent a group of vectors to be processed together.
+They are a subtype of [`AbstractArray{Data, 2}`] and support the [`DistObject`], and [`SrcDistObject`] for transfering between any two `MultiVectors`.
 Required methods:
 
     getMap(::MultiVector)
@@ -21,6 +23,8 @@ Required methods:
     similar(::MultiVector{Data})
 
 `commReduce(::MultiVector)` may need to be overridden if `getLocallArray(multiVector)` doesn't return a type useable by `sumAll`.
+
+See [`DenseMultiVector`] for a concrete implementation.
 """
 abstract type MultiVector{Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer} <: AbstractArray{Data, 2}
 end
@@ -340,13 +344,6 @@ end
 Returns the number of vectors in this `MultiVector`
 """
 function numVectors end
-
-"""
-    getMap(::MultiVector{Data, GID, PID, LID})::BlockMap{GID, PID, LID}
-
-Returns the `BlockMap` used by this `MultiVector`
-"""
-function getMap end
 
 """
     getLocalArray(::MultiVector{Data})::AbstractMatrix{Data}

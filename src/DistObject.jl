@@ -23,20 +23,23 @@ Here is the list of combine modes:
 
 
 """
-An interface for providing a target when constructing and using dense multi-vectors, vectors and matrices in parallel.
+An interface for providing a source when constructing and using multi-vectors and matrices in parallel.
 
     getMap(::SrcDistObject)
-Gets the map of the indices of the SrcDistObject
+Gets the map of the indices of the object
 
 See [`DistObject`](@ref)
 """
 const SrcDistObject = Any
 
 """
-An interface for providing a source when constructing and using dense multi-vectors, vectors and matrices in parallel.
+An interface for providing a target when constructing and using multi-vectors, and matrices in parallel.
 
 
 To support transfers the following methods must be implemented for the combination of source type and the target type
+
+    getMap(::DistObject)
+Gets the map of the indices of the object
 
     checkSizes(source::<:SrcDistObject{GID, PID, LID}, target::<:DistObject{GID, PID, LID})::Bool
 Whether the source and target are compatible for a transfer
@@ -48,7 +51,7 @@ Perform copies and permutations that are local to this process.
 Perform any packing or preparation required for communications.  The
 method returns the array of objects to export
 
-    unpackAndCombine(target::<:DistObject{GID, PID, LID},importLIDs::AbstractArray{LID, 1}, imports::AAbstractrray, distor::Distributor{GID, PID, LID}, cm::CombineMode)
+    unpackAndCombine(target::<:DistObject{GID, PID, LID}, importLIDs::AbstractArray{LID, 1}, imports::AAbstractrray, distor::Distributor{GID, PID, LID}, cm::CombineMode)
 Perform any unpacking and combining after communication
 
 See [`SrcDistObject`](@ref)
@@ -64,6 +67,13 @@ distributedGlobal(obj) = distributedGlobal(getMap(obj))
 
 getComm(obj) = getComm(getMap(obj))
 
+
+"""
+    getMap(::SrcDistObject)
+    getMap(::DistObject)
+Gets the map of the indices of the object
+"""
+function getMap end
 
 ## import/export interface ##
 
@@ -163,6 +173,25 @@ end
 Compare the source and target objects for compatiblity.  By default, returns false.  Override this to allow transfering to/from subtypes
 """
 checkSizes(source, target) = false
+
+"""
+    copyAndPermute(source::<:SrcDistObject{GID, PID, LID}, target::<:DistObject{GID, PID, LID}, numSameIDs::LID, permuteToLIDs::AbstractArray{LID, 1}, permuteFromLIDs::AbstractArray{LID, 1})
+Perform copies and permutations that are local to this process.
+"""
+function copyAndPermute end
+
+"""
+    packAndPrepare(source::<:SrcDistObject{GID, PID, LID}, target::<:DistObjectGID, PID, LID}, exportLIDs::AbstractArray{LID, 1}, distor::Distributor{GID, PID, LID})::AbstractArray
+Perform any packing or preparation required for communications.  The
+method returns the array of objects to export
+"""
+function packAndPrepare end
+
+"""
+    unpackAndCombine(target::<:DistObject{GID, PID, LID}, importLIDs::AbstractArray{LID, 1}, imports::AAbstractrray, distor::Distributor{GID, PID, LID}, cm::CombineMode)
+Perform any unpacking and combining after communication
+"""
+function unpackAndCombine end
 
 """
     doTransfer(src, target, cm::CombineMode, numSameIDs::LID, permuteToLIDs::AbstractArray{LID, 1}, permuteFromLIDs::AbstractArray{LID, 1}, remoteLIDs::AbstractArray{LID, 1}, exportLIDs::AbstractArray{LID, 1}, distor::Distributor{GID, PID, LID}, reversed::Bool)

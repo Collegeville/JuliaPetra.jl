@@ -121,7 +121,7 @@ scanSum(comm::Comm, val) = scanSum(comm, [val])[1]
 """
     getComm(obj)
 
-Gets the Comm for the object, if aplicable
+Gets the Comm for the object, if applicable
 """
 getComm(comm::Comm) = comm
 

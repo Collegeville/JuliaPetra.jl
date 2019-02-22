@@ -1,6 +1,8 @@
 # JuliaPetra
 
 [![Build Status](https://travis-ci.org/Collegeville/JuliaPetra.jl.svg?branch=master)](https://travis-ci.org/Collegeville/JuliaPetra.jl)
+[![Stable Docs](https://img.shields.io/badge/docs-stable-blue.svg)](https://Collegeville.github.io/JuliaPetra.jl/stable/)
+[![Latest Docs](https://img.shields.io/badge/docs-latest-blue.svg)](https://Collegeville.github.io/JuliaPetra.jl/latest/)
 
 This is an implmentation of [Trilinos's Petra Object Model](https://trilinos.github.io/data_service.html#trilinos-packages) in Julia.
 It is a basic framework for sparse linear algebra.
@@ -12,4 +14,4 @@ JuliaPetra is licensed under the MIT "Expat" license. See LICENSE.md for more in
 ## Setup
 
 JuliaPetra is not yet a registered package.
-So to install it, run `add https://github.com/collegeville/JuliaPetra` from the Pkg REPL. 
+So to install it, run `add https://github.com/collegeville/JuliaPetra` from the Pkg REPL.

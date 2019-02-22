@@ -1,9 +1,9 @@
 export BlockMap
-export remoteIDList, lid, gid, findLocalElementID
+export remoteIDList, lid, gid
 export minAllGID, maxAllGID, minMyGID, maxMyGID, minLID, maxLID
 export numGlobalElements, myGlobalElements
 export uniqueGIDs, globalIndicesType, sameBlockMapDataAs, sameAs
-export linearMap, myGlobalElementIDs, comm
+export linearMap, myGlobalElementIDs
 export myGID, myLID, distributedGlobal, numMyElements
 
 

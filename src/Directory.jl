@@ -3,7 +3,7 @@ export Directory, getDirectoryEntries, gidsAllUniquelyOwned
 # methods and docs based straight off Epetra_Directory to match Comm
 
 """
-A base type as an interface to allow Map and BlockMap objects to reference non-local
+A base type as an interface to allow BlockMap objects to reference non-local
 elements.
 
 All subtypes must have the following methods, with DirectoryImpl standing in for

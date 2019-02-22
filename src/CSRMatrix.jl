@@ -2,6 +2,9 @@ export CSRMatrix, insertGlobalValues
 
 using TypeStability
 
+"""
+An implementation of [`RowMatrix`](@ref) that uses CSR format
+"""
 mutable struct CSRMatrix{Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer} <: RowMatrix{Data, GID, PID, LID}
     rowMap::BlockMap{GID, PID, LID}
     colMap::Union{BlockMap{GID, PID, LID}, Nothing}

@@ -1,5 +1,7 @@
 
 export Export
+export sourceMap, targetMap, distributor, isLocallyComplete
+export permuteToLIDs, permuteFromLIDs, exportLIDs, remoteLIDs, remotePIDs, numSameIDs
 
 """
 Communication plan for data rekg.ribution from a (possibly) multiple-owned to a uniquely owned distribution

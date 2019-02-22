@@ -23,7 +23,14 @@ notifications:
 
 cache:
   directories:
-    - /home/travis/.julia/packages/MPI/
+    - $HOME/.julia/packages/MPI/
+    - $HOME/Library/Caches/Homebrew
+    - /usr/local/Homebrew
+
+#ensure the caching of homebrew only stores the latest version of packages
+before_cache:
+  - brew cleanup
+  - rm -rf /usr/local/Homebrew/Library/Taps/homebrew/homebrew-cask/homebrew-cask
 
 #MPI.jl needs mpi binaries plus compilers avalible
 addons:
@@ -36,7 +43,12 @@ addons:
 before_script:
   - |
     if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-      brew update
+      if [ -d /usr/local/Homebrew/Library/Taps/homebrew/homebrew-cask ]; then
+        rm -rf /usr/local/Homebrew/Library/Taps/caskroom/homebrew-cask
+      fi
+      find -type d -name .git -exec bash -c "cd '{}'/.. && git clean -fxd" ";"
+      brew cleanup
+      brew update --merge
       brew upgrade cmake
       brew cask uninstall oclint # Prevent conflict with gcc
       brew install mpich

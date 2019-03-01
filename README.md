@@ -13,5 +13,5 @@ JuliaPetra is licensed under the MIT "Expat" license. See LICENSE.md for more in
 
 ## Setup
 
-JuliaPetra is not yet a registered package.
-So to install it, run `add https://github.com/collegeville/JuliaPetra` from the Pkg REPL.
+JuliaPetra is registered with the default package registry.
+So to install it, run `add JuliaPetra` from the Pkg REPL.

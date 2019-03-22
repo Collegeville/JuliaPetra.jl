@@ -2,7 +2,7 @@
 export SrcDistRowMatrix, DistRowMatrix, RowMatrix
 export isFillActive, isLocallyIndexed
 export getGraph, getGlobalRowCopy, getLocalRowCopy, getGlobalRowView, getLocalRowView, getLocalDiagCopy, leftScale!, rightScale!
-export localApply
+export localApply, mul!
 
 """
 RowMatrix is the base type for all row oriented Petra matrices.
@@ -59,6 +59,8 @@ Some pre-implemented methods can be optimized by providing specialized implement
 All `RowMatrix` methods that are also implemented by `RowGraph` are implemented using `getGraph`.
 `pack` is implemented using `getLocalRowCopy`
 `getGlobalRowCopy!` is implemented by calling `getLocalRowCopy!` and remapping the values using `gid(::BlockMap, ::Integer)`
+
+Additionally, Julia's `mul!` and `*` functions are implemented for `RowMatrix`-`MultiVector` products
 """
 abstract type RowMatrix{Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer} <: AbstractArray{Data, 2}
 end
@@ -259,7 +261,6 @@ function createRowMapMultiVector(mat::RowMatrix{Data, GID, PID, LID}, Y::MultiVe
     end
 end
 
-
 function apply!(Y::MultiVector{Data, GID, PID, LID},
         operator::RowMatrix{Data, GID, PID, LID}, X::MultiVector{Data, GID, PID, LID},
         mode::TransposeMode, alpha::Data, beta::Data) where {Data, GID, PID, LID}
@@ -401,6 +402,20 @@ function localApply(Y::MultiVector{Data, GID, PID, LID},
     end
 
     Y
+end
+
+#### Julia LA API wrappers ####
+
+function LinearAlgebra.mul!(Y::MultiVector{Data, GID, PID, LID},
+        	operator::RowMatrix{Data, GID, PID, LID},
+			X::MultiVector{Data, GID, PID, LID}) where {Data, GID, PID, LID}
+	apply!(Y, operator, X)
+end
+
+function Base.:*(operator::RowMatrix{Data, GID, PID, LID},
+			X::MultiVector{Data, GID, PID, LID}) where {Data, GID, PID, LID}
+	Y = DenseMultiVector{Data}(getRowMap(operator), numVectors(X), true)
+	mul!(Y, operator, X)
 end
 
 

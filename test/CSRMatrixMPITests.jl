@@ -61,3 +61,45 @@ for i in 1:n
 end
 
 @test exp == Y.data
+
+
+
+X = DenseMultiVector(map, fill(Data(2), n, n))
+Y = A*X
+
+@test Y isa DenseMultiVector
+@test numVectors(Y) == n
+@test fill(2, n, n) == X.data #ensure X isn't mutated
+exp = fill(Data(0), n, n)
+for i in 1:n
+    if i == 1 && pid == 1
+        exp[1, :] .= 2
+    elseif i == n && pid == nProc
+        exp[i, :] .= 2
+    #else
+        #exp[i, :] .= -2 +4 -2
+    end
+end
+
+@test exp == Y.data
+
+
+Y = DenseMultiVector(map, fill(Data(2), n, n))
+X = DenseMultiVector(map, fill(Data(2), n, n))
+
+@test Y === mul!(Y, A, X)
+
+@test fill(2, n, n) == X.data #ensure X isn't mutated
+
+exp = fill(Data(0), n, n)
+for i in 1:n
+    if i == 1 && pid == 1
+        exp[1, :] .+= 2
+    elseif i == n && pid == nProc
+        exp[i, :] .+= 2
+    #else
+        #exp[i, :] .+= -2 +4 -2
+    end
+end
+
+@test exp == Y.data

@@ -106,7 +106,6 @@ X = DenseMultiVector(map, Data[2 2; 2 2])
 @test Data[30.5 30; 72 73] == Y.data
 
 
-
 Y = DenseMultiVector(map, Data[1 0; 0 2])
 X = DenseMultiVector(map, Data[2 2; 2 2]) #ensure bugs in the previous test don't affect this test
 
@@ -114,3 +113,19 @@ X = DenseMultiVector(map, Data[2 2; 2 2]) #ensure bugs in the previous test don'
 
 @test Data[2 2; 2 2] == X.data #ensure X isn't mutated
 @test [42.5 42; 60 61] == Y.data
+
+
+# Julia's LA API
+
+X = DenseMultiVector(map, Data[2 2; 2 2])
+
+Y = mat * X
+@test Data[2 2; 2 2] == X.data
+@test Y isa DenseMultiVector
+@test getMap(Y) === getMap(X)
+@test Data[10 10;24 24] == Y.data
+
+Y = DenseMultiVector(map, Data[1 0; 0 2])
+Y = mul!(Y, mat, X)
+@test Data[2 2; 2 2] == X.data
+@test Data[10 10;24 24] == Y.data

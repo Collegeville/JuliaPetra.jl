@@ -1,4 +1,3 @@
-using TypeStability
 using LinearAlgebra
 
 module JuliaPetra

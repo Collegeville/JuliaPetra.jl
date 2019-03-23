@@ -1,7 +1,5 @@
 export CSRMatrix, insertGlobalValues
 
-using TypeStability
-
 """
 An implementation of [`RowMatrix`](@ref) that uses CSR format
 """
@@ -335,7 +333,7 @@ function fillLocalGraphAndMatrix(matrix::CSRMatrix{Data, GID, PID, LID},
 
    matrix.localMatrix.graph.entries = myGraph.localIndices1D
 
-    #most of the debug sections were taken out, they could be re-added wrapped with `if @is_debug_mode`
+    #most of the debug sections were taken out
     if getProfileType(matrix) == DYNAMIC_PROFILE
         numRowEntries = myGraph.numRowEntries
 
@@ -864,52 +862,38 @@ function getLocalRowView(matrix::CSRMatrix{Data, GID, PID, LID},
 end
 
 
-TypeStability.@stable_function [(CSRMatrix{D, G, P, L}, L)
-                    for (D, G, P, L) in Base.Iterators.product(
-                        [Float64, ComplexF32], #Data
-                        [UInt64, Int64, UInt32], #GID
-                        [UInt8, Int8, UInt32], #PID
-                        [UInt32, Int32]) #LID
-] RegexDict((r"rowValues", Any)) begin
+Base.@propagate_inbounds @inline function getLocalRowViewPtr(
+        matrix::CSRMatrix{Data, GID, PID, LID}, localRow::LID
+        )::Tuple{Ptr{LID}, Ptr{Data}, LID} where {Data, GID, PID, LID}
+    row = LID(localRow)
+    graph = matrix.myGraph
 
-    function getLocalRowViewPtr end
-
-    Base.@propagate_inbounds @inline function getLocalRowViewPtr(
-            matrix::CSRMatrix{Data, GID, PID, LID}, localRow::LID
-            )::Tuple{Ptr{LID}, Ptr{Data}, LID} where {Data, GID, PID, LID}
-        row = LID(localRow)
-        graph = matrix.myGraph
-
-        if getProfileType(graph) == STATIC_PROFILE
-            if (@is_debug_mode) && !hasRowInfo(graph)
-                error("Row Info was deleted, but is still needed")
-            end
-            offset1D = graph.rowOffsets[row]
-            numEntries = (length(graph.numRowEntries) == 0 ?
-                        graph.rowOffsets[row+1] - offset1D
-                        : graph.numRowEntries[row])
-            if numEntries > 0
-                indicesPtr = pointer(graph.localIndices1D, offset1D)
-                rowValues = matrix.localMatrix.values
-                if rowValues isa SubArray{Data, 1, Vector{Data}, Tuple{UnitRange{LID}}, true}
-                    valuesPtr = pointer(rowValues.parent, offset1D + rowValues.indexes[1].start)
-                elseif rowValues isa Vector{Data}
-                    #else should be Vector, but assert anyways
-                    valuesPtr = pointer(rowValues, offset1D)
-                else
-                    error("localMatrix.values is of unsupported type $(typeof(rowValues)).")
-                end
-
-                return (indicesPtr, valuesPtr, numEntries)
+    if getProfileType(graph) == STATIC_PROFILE
+        offset1D = graph.rowOffsets[row]
+        numEntries = (length(graph.numRowEntries) == 0 ?
+                    graph.rowOffsets[row+1] - offset1D
+                    : graph.numRowEntries[row])
+        if numEntries > 0
+            indicesPtr = pointer(graph.localIndices1D, offset1D)
+            rowValues = matrix.localMatrix.values
+            if rowValues isa SubArray{Data, 1, Vector{Data}, Tuple{UnitRange{LID}}, true}
+                valuesPtr = pointer(rowValues.parent, offset1D + rowValues.indexes[1].start)
+            elseif rowValues isa Vector{Data}
+                #else should be Vector, but assert anyways
+                valuesPtr = pointer(rowValues, offset1D)
             else
-                return (C_NULL, C_NULL, 0)
+                error("localMatrix.values is of unsupported type $(typeof(rowValues)).")
             end
-        else #dynamic profile
-            indices = graph.localIndices2D[row]
-            values = matrix.values2D[row]
 
-            return (pointer(indices, 0), pointer(values, 0), length(indices))
+            return (indicesPtr, valuesPtr, numEntries)
+        else
+            return (C_NULL, C_NULL, 0)
         end
+    else #dynamic profile
+        indices = graph.localIndices2D[row]
+        values = matrix.values2D[row]
+
+        return (pointer(indices, 0), pointer(values, 0), length(indices))
     end
 end
 
@@ -1031,15 +1015,6 @@ end
 
 #### Operator methods ####
 
-TypeStability.@stable_function [(DenseMultiVector{D, G, P, L}, CSRMatrix{D, G, P, L},
-                        DenseMultiVector{D, G, P, L}, TransposeMode, D, D)
-                    for (D, G, P, L) in Base.Iterators.product(
-                        [Float64, ComplexF32], #Data
-                        [UInt64, Int64, UInt32], #GID
-                        [UInt8, Int8, UInt32], #PID
-                        [UInt32, Int32]) #LID
-#some iteration variables are Unions of nothing and a pair of either UInt32 or Int32
-] RegexDict((r"#temp#@_[0-9]+", Union{Nothing, Tuple{UInt32, UInt32}, Tuple{Int32, Int32}})) begin
 function localApply(Y::MultiVector{Data, GID, PID, LID},
         A::CSRMatrix{Data, GID, PID, LID}, X::MultiVector{Data, GID, PID, LID},
         mode::TransposeMode, alpha::Data, beta::Data) where {Data, GID, PID, LID}
@@ -1081,5 +1056,4 @@ function localApply(Y::MultiVector{Data, GID, PID, LID},
     end
 
     Y
-end
 end

@@ -35,8 +35,6 @@ const rowInfoSpare = Union{RowInfo, Nothing}[nothing]
             return rowInfo
         end
     end
-
-    (@is_debug_mode) && (myPid(getComm(graph)) == 1) && println("can't reuse $(typeof(rowInfoSpare[1]))")
     #couldn't reuse, create new instance
     return RowInfo{LID}(graph, localRow, allocSize, numEntries, offset1D)
 end
@@ -115,10 +113,6 @@ function computeGlobalConstants(graph::CSRGraph{GID, PID, LID}) where {
     #short circuit if already computed
     graph.haveGlobalConstants && return
 
-    if @is_debug_mode
-        @assert (graph.colMap != nothing) "The graph must have a column map at this point"
-    end
-
     computeLocalConstants(graph)
 
     commObj = getComm(getRowMap(graph))
@@ -144,10 +138,6 @@ function computeLocalConstants(graph::CSRGraph{GID, PID, LID}) where {
 
     #short circuit if already computed
     graph.haveLocalConstants && return
-
-    if @is_debug_mode
-        @assert (graph.colMap != nothing) "The graph must have a column map at this point"
-    end
 
     #if graph.haveLocalConstants == false  #short circuited above
 
@@ -203,9 +193,6 @@ Base.@propagate_inbounds function getRowInfoFromGlobalRow(graph::CSRGraph{GID, P
 end
 
 @inline function getRowInfo(graph::CSRGraph{GID, PID, LID}, row::LID)::RowInfo{LID} where {GID, PID, LID <: Integer}
-    if @is_debug_mode
-        @assert hasRowInfo(graph) "Graph does not have row info anymore.  Should have been caught earlier"
-    end
 
     emptyRowInfo = !hasRowInfo(graph)
     @boundscheck emptyRowInfo = emptyRowInfo || !myLID(graph.rowMap, row)
@@ -314,9 +301,6 @@ function allocateIndices(graph::CSRGraph{GID, <:Integer, LID},
         numRowEntries = zeros(LID, numRows)
         graph.numRowEntries = numRowEntries
     end
-
-    #let the calling constructor take care of this
-    #checkInternalState(graph)
 end
 
 
@@ -337,147 +321,151 @@ function makeImportExport(graph::CSRGraph{GID, PID, LID}) where {
     end
 end
 
-#TODO migrate this to testing
+"""
+    checkInternalState(::CSRGraph)
+
+Checks the graphs internal state for correctness.
+Mainly useful for intnernal debugging and testing purposes
+"""
 function checkInternalState(graph::CSRGraph)
-    if @is_debug_mode
-        localNumRows = getLocalNumRows(graph)
+    localNumRows = getLocalNumRows(graph)
 
-        @assert(isFillActive(graph) != isFillComplete(graph),
-            "Graph must be either fill active or fill "
-            * "complete$(isFillActive(graph) ? "not both" : "").")
-        @assert(!isFillComplete(graph)
-                || (graph.colMap != nothing
-                    && graph.domainMap != nothing
-                    && graph.rangeMap != nothing),
-            "Graph is fill complete, but at least one of {column, range, domain} map is null")
-        @assert((graph.storageStatus != STORAGE_1D_PACKED
-                    && graph.storageStatus != STORAGE_1D_UNPACKED)
-            || graph.pftype != DYNAMIC_PROFILE,
-            "Graph claims 1D storage, but dynamic profile")
-        if graph.storageStatus == STORAGE_2D
-            @assert(graph.pftype != STATIC_PROFILE ,
-                "Graph claims 2D storage, but static profile")
-            @assert(!isLocallyIndexed(graph)
-                || length(graph.localIndices2D) == localNumRows,
-                "Graph calims to be locally index and have 2D storage, "
-                * "but length(graph.localIndices2D) = $(length(graph.localIndices2D)) "
-                * "!= getLocalNumRows(graph) = $localNumRows")
-            @assert(!isGloballyIndexed(graph)
-                || length(graph.globalIndices2D) == localNumRows,
-                "Graph calims to be globally index and have 2D storage, "
-                * "but length(graph.globalIndices2D) = $(length(graph.globalIndices2D)) "
-                * "!= getLocalNumRows(graph) = $localNumRows")
-        end
-
-        @assert(graph.haveGlobalConstants
-            || (graph.globalNumEntries == 0
-                && graph.globalNumDiags == 0
-                && graph.globalMaxNumRowEntries == 0),
-            "Graph claims to not have global constants, "
-            * "but some of the global constants are not 0")
-
-        @assert(!graph.haveGlobalConstants
-            || (graph.globalNumEntries != 0
-                && graph.globalMaxNumRowEntries != 0),
-            "Graph claims to have global constants, but also says 0 global entries")
-
-        @assert(!graph.haveGlobalConstants
-            || (graph.globalNumEntries >= graph.nodeNumEntries
-                && graph.globalNumDiags >= graph.nodeNumDiags
-                && graph.globalMaxNumRowEntries >= graph.nodeMaxNumRowEntries),
-            "Graph claims to have global constants, but some of the local "
-            * "constants are greater than their corresponding global constants")
-
-        @assert(!isStorageOptimized(graph)
-            || graph.pftype == STATIC_PROFILE,
-            "Storage is optimized, but graph is not STATIC_PROFILE")
-
-        @assert(!isGloballyIndexed(graph)
-            || length(graph.rowOffsets) == 0
-            || (length(graph.rowOffsets) == localNumRows +1
-                && graph.rowOffsets[localNumRows+1] == length(graph.globalIndices1D)),
-            "If rowOffsets has nonzero size and the graph is globally "
-            * "indexed, then rowOffsets must have N+1 rows and rowOffsets[N+1] "
-            * "must equal the length of globalIndices1D")
-
+    @assert(isFillActive(graph) != isFillComplete(graph),
+        "Graph must be either fill active or fill "
+        * "complete$(isFillActive(graph) ? "not both" : "").")
+    @assert(!isFillComplete(graph)
+            || (graph.colMap != nothing
+                && graph.domainMap != nothing
+                && graph.rangeMap != nothing),
+        "Graph is fill complete, but at least one of {column, range, domain} map is null")
+    @assert((graph.storageStatus != STORAGE_1D_PACKED
+                && graph.storageStatus != STORAGE_1D_UNPACKED)
+        || graph.pftype != DYNAMIC_PROFILE,
+        "Graph claims 1D storage, but dynamic profile")
+    if graph.storageStatus == STORAGE_2D
+        @assert(graph.pftype != STATIC_PROFILE ,
+            "Graph claims 2D storage, but static profile")
         @assert(!isLocallyIndexed(graph)
-            || length(graph.rowOffsets) == 0
-            || (length(graph.rowOffsets) == localNumRows +1
-                && graph.rowOffsets[localNumRows+1] == length(graph.localIndices1D)),
-            "If rowOffsets has nonzero size and the graph is globally "
-            * "indexed, then rowOffsets must have N+1 rows and rowOffsets[N+1] "
-            * "must equal the length of localIndices1D")
-
-        if graph.pftype == DYNAMIC_PROFILE
-            @assert(localNumRows == 0
-                || length(graph.localIndices2D) > 0
-                || length(graph.globalIndices2D) > 0,
-                "Graph has dynamic profile, the calling process has nonzero "
-                * "rows, but no 2-D column index storage is present.")
-            @assert(localNumRows == 0
-                || length(graph.numRowEntries) != 0,
-                "Graph has dynamic profiles and the calling process has "
-                * "nonzero rows, but numRowEntries is not present")
-
-            @assert(length(graph.localIndices1D) == 0
-                && length(graph.globalIndices1D) == 0,
-                "Graph has dynamic profile, but 1D allocations are present")
-
-            @assert(length(graph.rowOffsets) == 0,
-                "Graph has dynamic profile, but row offsets are present")
-
-        elseif graph.pftype == STATIC_PROFILE
-            @assert(length(graph.localIndices1D) != 0
-                || length(graph.globalIndices1D) != 0,
-                "Graph has static profile, but 1D allocations are not present")
-
-            @assert(length(graph.localIndices2D) == 0
-                && length(graph.globalIndices2D) == 0,
-                "Graph has static profile, but 2D allocations are present")
-        else
-            error("Unknown profile type: $(graph.pftype)")
-        end
-
-        if graph.indicesType == LOCAL_INDICES
-            @assert(length(graph.globalIndices1D) == 0
-                && length(graph.globalIndices2D) == 0,
-                "Indices are local, but global allocations are present")
-            @assert(graph.nodeNumEntries == 0
-                || length(graph.localIndices1D) > 0
-                || length(graph.localIndices2D) > 0,
-                "Indices are local and local entries exist, but there aren't local allocations present")
-        elseif graph.indicesType == GLOBAL_INDICES
-            @assert(length(graph.localIndices1D) == 0
-                && length(graph.localIndices2D) == 0,
-                "Indices are global, but local allocations are present")
-            @assert(graph.nodeNumEntries == 0
-                || length(graph.globalIndices1D) > 0
-                || length(graph.globalIndices2D) > 0,
-                "Indices are global and local entries exist, but there aren't global allocations present")
-        else
-            warn("Unknown indices type: $(graph.indicesType)")
-        end
-
-        #check actual allocations
-        lenRowOffsets = length(graph.rowOffsets)
-        if graph.pftype == STATIC_PROFILE && lenRowOffsets != 0
-            @assert(lenRowOffsets == localNumRows+1,
-                "Graph has static profile, rowOffsets has a nonzero length "
-                * "($lenRowOffsets), but is not equal to the "
-                * "local number of rows plus one ($(localNumRows+1))")
-            actualNumAllocated = graph.rowOffsets[localNumRows+1]
-            @assert(!isLocallyIndexed(graph)
-                || length(graph.localIndices1D) == actualNumAllocated,
-                "Graph has static profile, rowOffsets has a nonzero length, "
-                * "but length(localIndices1D) = $(length(graph.localIndices1D)) "
-                * "!= actualNumAllocated = $actualNumAllocated")
-            @assert(!isGloballyIndexed(graph)
-                || length(graph.globalIndices1D) == actualNumAllocated,
-                "Graph has static profile, rowOffsets has a nonzero length, "
-                * "but length(globalIndices1D) = $(length(graph.globalIndices1D)) "
-                * "!= actualNumAllocated = $actualNumAllocated")
-        end
+            || length(graph.localIndices2D) == localNumRows,
+            "Graph calims to be locally index and have 2D storage, "
+            * "but length(graph.localIndices2D) = $(length(graph.localIndices2D)) "
+            * "!= getLocalNumRows(graph) = $localNumRows")
+        @assert(!isGloballyIndexed(graph)
+            || length(graph.globalIndices2D) == localNumRows,
+            "Graph calims to be globally index and have 2D storage, "
+            * "but length(graph.globalIndices2D) = $(length(graph.globalIndices2D)) "
+            * "!= getLocalNumRows(graph) = $localNumRows")
     end
+
+    @assert(graph.haveGlobalConstants
+        || (graph.globalNumEntries == 0
+            && graph.globalNumDiags == 0
+            && graph.globalMaxNumRowEntries == 0),
+        "Graph claims to not have global constants, "
+        * "but some of the global constants are not 0")
+
+    @assert(!graph.haveGlobalConstants
+        || (graph.globalNumEntries != 0
+            && graph.globalMaxNumRowEntries != 0),
+        "Graph claims to have global constants, but also says 0 global entries")
+
+    @assert(!graph.haveGlobalConstants
+        || (graph.globalNumEntries >= graph.nodeNumEntries
+            && graph.globalNumDiags >= graph.nodeNumDiags
+            && graph.globalMaxNumRowEntries >= graph.nodeMaxNumRowEntries),
+        "Graph claims to have global constants, but some of the local "
+        * "constants are greater than their corresponding global constants")
+
+    @assert(!isStorageOptimized(graph)
+        || graph.pftype == STATIC_PROFILE,
+        "Storage is optimized, but graph is not STATIC_PROFILE")
+
+    @assert(!isGloballyIndexed(graph)
+        || length(graph.rowOffsets) == 0
+        || (length(graph.rowOffsets) == localNumRows +1
+            && graph.rowOffsets[localNumRows+1] == length(graph.globalIndices1D)),
+        "If rowOffsets has nonzero size and the graph is globally "
+        * "indexed, then rowOffsets must have N+1 rows and rowOffsets[N+1] "
+        * "must equal the length of globalIndices1D")
+
+    @assert(!isLocallyIndexed(graph)
+        || length(graph.rowOffsets) == 0
+        || (length(graph.rowOffsets) == localNumRows +1
+            && graph.rowOffsets[localNumRows+1] == length(graph.localIndices1D)),
+        "If rowOffsets has nonzero size and the graph is globally "
+        * "indexed, then rowOffsets must have N+1 rows and rowOffsets[N+1] "
+        * "must equal the length of localIndices1D")
+
+    if graph.pftype == DYNAMIC_PROFILE
+        @assert(localNumRows == 0
+            || length(graph.localIndices2D) > 0
+            || length(graph.globalIndices2D) > 0,
+            "Graph has dynamic profile, the calling process has nonzero "
+            * "rows, but no 2-D column index storage is present.")
+        @assert(localNumRows == 0
+            || length(graph.numRowEntries) != 0,
+            "Graph has dynamic profiles and the calling process has "
+            * "nonzero rows, but numRowEntries is not present")
+
+        @assert(length(graph.localIndices1D) == 0
+            && length(graph.globalIndices1D) == 0,
+            "Graph has dynamic profile, but 1D allocations are present")
+
+        @assert(length(graph.rowOffsets) == 0,
+            "Graph has dynamic profile, but row offsets are present")
+
+    elseif graph.pftype == STATIC_PROFILE
+        @assert(length(graph.localIndices1D) != 0
+            || length(graph.globalIndices1D) != 0,
+            "Graph has static profile, but 1D allocations are not present")
+
+        @assert(length(graph.localIndices2D) == 0
+            && length(graph.globalIndices2D) == 0,
+            "Graph has static profile, but 2D allocations are present")
+    else
+        error("Unknown profile type: $(graph.pftype)")
+    end
+
+    if graph.indicesType == LOCAL_INDICES
+        @assert(length(graph.globalIndices1D) == 0
+            && length(graph.globalIndices2D) == 0,
+            "Indices are local, but global allocations are present")
+        @assert(graph.nodeNumEntries == 0
+            || length(graph.localIndices1D) > 0
+            || length(graph.localIndices2D) > 0,
+            "Indices are local and local entries exist, but there aren't local allocations present")
+    elseif graph.indicesType == GLOBAL_INDICES
+        @assert(length(graph.localIndices1D) == 0
+            && length(graph.localIndices2D) == 0,
+            "Indices are global, but local allocations are present")
+        @assert(graph.nodeNumEntries == 0
+            || length(graph.globalIndices1D) > 0
+            || length(graph.globalIndices2D) > 0,
+            "Indices are global and local entries exist, but there aren't global allocations present")
+    else
+        warn("Unknown indices type: $(graph.indicesType)")
+    end
+
+    #check actual allocations
+    lenRowOffsets = length(graph.rowOffsets)
+    if graph.pftype == STATIC_PROFILE && lenRowOffsets != 0
+        @assert(lenRowOffsets == localNumRows+1,
+            "Graph has static profile, rowOffsets has a nonzero length "
+            * "($lenRowOffsets), but is not equal to the "
+            * "local number of rows plus one ($(localNumRows+1))")
+        actualNumAllocated = graph.rowOffsets[localNumRows+1]
+        @assert(!isLocallyIndexed(graph)
+            || length(graph.localIndices1D) == actualNumAllocated,
+            "Graph has static profile, rowOffsets has a nonzero length, "
+            * "but length(localIndices1D) = $(length(graph.localIndices1D)) "
+            * "!= actualNumAllocated = $actualNumAllocated")
+        @assert(!isGloballyIndexed(graph)
+            || length(graph.globalIndices1D) == actualNumAllocated,
+            "Graph has static profile, rowOffsets has a nonzero length, "
+            * "but length(globalIndices1D) = $(length(graph.globalIndices1D)) "
+            * "!= actualNumAllocated = $actualNumAllocated")
+    end
+    true #if an problem occurred, an error was already thrown
 end
 
 function setLocallyModified(graph::CSRGraph)
@@ -599,8 +587,6 @@ function globalAssemble(graph::CSRGraph)
         doImport(oneToOneGraph, graph, importToOrig, INSERT)
     end
     clear!(graph.nonLocals)
-
-    checkInternalState(graph)
 end
 
 function makeIndicesLocal(graph::CSRGraph{GID, PID, LID}) where {GID, PID, LID}
@@ -648,10 +634,6 @@ function makeIndicesLocal(graph::CSRGraph{GID, PID, LID}) where {GID, PID, LID}
                     globalIndices = graph.globalIndices2D[localRow]
 
                     graph.localIndices2D[localRow] = [lid(colMap, gid) for gid in globalIndices]
-                    if @is_debug_mode
-                        @assert(minimum(graph.localIndices2D[localRow]) > 0,
-                            "Globalal indices were not found in the column Map")
-                    end
                 end
             end
             graph.globalIndices2D = Array{GID, 1}[]
@@ -660,7 +642,6 @@ function makeIndicesLocal(graph::CSRGraph{GID, PID, LID}) where {GID, PID, LID}
 
     graph.localGraph = LocalCSRGraph(graph.localIndices1D, graph.rowOffsets)
     graph.indicesType = LOCAL_INDICES
-    checkInternalState(graph)
 end
 
 
@@ -722,12 +703,6 @@ macro insertIndicesImpl(indicesType, innards)
             setLocallyModified(graph)
 
             recycleRowInfo(rowInfo)
-            if @is_debug_mode
-                chkNewNumEntries = getNumEntriesInLocalRow(graph, myRow)
-                @assert(chkNewNumEntries == newNumEntries,
-                    "Internal Logic error: chkNewNumEntries = $chkNewNumEntries "
-                    * "!= newNumEntries = $newNumEntries")
-            end
             nothing
     end)
 end
@@ -822,14 +797,6 @@ function insertGlobalIndicesImpl(graph::CSRGraph{GID, PID, LID},
         graph.numRowEntries[myRow] = rowInfo.numEntries+numNewToInsert
         graph.nodeNumEntries += numNewToInsert
         setLocallyModified(graph)
-
-        if @is_debug_mode
-            newNumEntries = rowInfo.numEntries + numNewToInsert
-            chkNewNumEntries = getNumEntiresInLocalRow(graph, myRow)
-            @assert(chkNewNumEntries == newNumEntries,
-                "chkNewNumEntries = $chkNewNumEntries "
-                * "!= newNumEntries = $newNumEntries")
-        end
         return
     end
 end
@@ -922,9 +889,7 @@ function __makeColMap(graph::CSRGraph{GID, PID, LID}, domMap::Union{BlockMap{GID
 
     remotePIDs = remoteIDList(domMap, remoteColGIDs)[1]
     if any(remotePIDs .== 0)
-        if @is_debug_mode
-            warn("Some column indices are not in the domain Map")
-        end
+        warn("Some column indices are not in the domain Map")
         error = true
     end
 
@@ -965,11 +930,6 @@ function __makeColMap(graph::CSRGraph{GID, PID, LID}, domMap::Union{BlockMap{GID
         end
 
         if numLocalCount != numLocalColGIDs
-            if @is_debug_mode
-                warn("$(myPid(getComm(graph))): numLocalCount = $numLocalCount "
-                    * "!= numLocalColGIDs = $numLocalColGIDs.  "
-                    * "This should not happen.")
-            end
             error = true
         end
     end

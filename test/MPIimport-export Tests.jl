@@ -19,19 +19,11 @@ function basicMPITest(impor)
     @test true == data.isLocallyComplete
 end
 
-#ensure at least a few lines, each starting with the PID
-#Need to escape coloring:  .*
-#"^(?:.*INFO: .*$pid: .+\n){2,}.*\$"
-debugregex = Regex("^$pid: .+")
 
 # basic import
-impor = (@test_logs (:info, debugregex) match_mode=:any Import(srcMap, desMap))
-basicMPITest(impor)
-impor = (@test_logs (:info, debugregex) match_mode=:any Import(srcMap, desMap, nothing))
-basicMPITest(impor)
+basicMPITest(Import(srcMap, desMap))
+basicMPITest(Import(srcMap, desMap, nothing))
 
 # basic export
-expor = (@test_logs (:info, debugregex) match_mode=:any Export(srcMap, desMap))
-basicMPITest(expor)
-expor = (@test_logs (:info, debugregex) match_mode=:any Export(srcMap, desMap, nothing))
-basicMPITest(expor)
+basicMPITest(Export(srcMap, desMap))
+basicMPITest(Export(srcMap, desMap, nothing))

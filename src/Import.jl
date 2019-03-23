@@ -27,10 +27,6 @@ function Import(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID}
 
     importData = ImportExportData(source, target)
 
-    if @is_debug_mode
-        @info "$(myPid(getComm(source))): Import ctor expert\n"
-    end
-
     remoteLIDs = JuliaPetra.remoteLIDs(importData)
 
     if !userRemotePIDGID
@@ -86,22 +82,12 @@ end
 
 function Import(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID}, remotePIDs::Union{AbstractArray{PID}, Nothing}=nothing) where {GID <: Integer, PID <: Integer, LID <: Integer}
 
-    if @is_debug_mode
-        @info "$(myPid(getComm(source))): Import ctor\n"
-    end
-
     impor = Import{GID, PID, LID}(ImportExportData(source, target))
 
     remoteGIDs = setupSamePermuteRemote(impor)
 
-    if @is_debug_mode
-        @info "$(myPid(getComm(source))): Import ctor: setupSamePermuteRemote done\n"
-    end
     if distributedGlobal(source)
         setupExport(impor, remoteGIDs, remotePIDs)
-    end
-    if @is_debug_mode
-        @info "$(myPid(getComm(source))): Import ctor: done\n"
     end
 
     impor
@@ -181,10 +167,6 @@ function setupExport(impor::Import{GID, PID, LID}, remoteGIDs::AbstractArray{GID
 
     if !useRemotePIDs
         newRemotePIDs = Array{PID, 1}(undef, length(remoteGIDs))
-        if @is_debug_mode
-            @info "$(myPid(getComm(source))): setupExport(Import): about to call " *
-                "getRemoteIndexList on sourceMap\n"
-        end
         (remoteProcIDs, remoteLIDs) = remoteIDList(source, remoteGIDs)
         for e in remoteLIDs
             if e == 0
@@ -259,10 +241,6 @@ function setupExport(impor::Import{GID, PID, LID}, remoteGIDs::AbstractArray{GID
         for k in 1:numExportIDs
             exportLIDs[k] = lid(source, exportGIDs[k])
         end
-    end
-
-    if @is_debug_mode
-        @info "$(myPid(getComm(source))): setupExport: done\n"
     end
 end
 

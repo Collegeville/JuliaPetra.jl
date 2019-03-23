@@ -28,22 +28,12 @@ function Export(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID}
         remotePIDs::Union{AbstractArray{PID}, Nothing}, plist::Dict{Symbol}) where {
             GID <: Integer, PID <: Integer, LID <: Integer}
 
-    if @is_debug_mode
-        @info "$(myPid(getComm(source))): Export ctor\n"
-    end
-
     expor = Export(ImportExportData(source, target))
 
     exportGIDs = setupSamePermuteExport(expor)
 
-    if @is_debug_mode
-        @info "$(myPid(getComm(source))): Export ctor: setupSamePermuteExport done\n"
-    end
     if distributedGlobal(source)
         setupRemote(expor, exportGIDs)
-    end
-    if @is_debug_mode
-        @info "$(myPid(getComm(source))): Export ctor: done\n"
     end
 
     expor
@@ -149,10 +139,6 @@ function setupRemote(expor::Export{GID, PID, LID}, exportGIDs::AbstractArray{GID
 
     target = targetMap(data)
 
-    if @is_debug_mode
-        @info "$(myPid(getComm(target))): setupRemote\n"
-    end
-
     exportPIDs = JuliaPetra.exportPIDs(data)
 
     order = sortperm(exportPIDs)
@@ -160,15 +146,7 @@ function setupRemote(expor::Export{GID, PID, LID}, exportGIDs::AbstractArray{GID
     permute!(exportLIDs(data), order)
     permute!(exportGIDs, order)
 
-    if @is_debug_mode
-        @info "$(myPid(getComm(target))): setupRemote: Calling createFromSends\n"
-    end
-
     numRemoteIDs = createFromSends(distributor(data), exportPIDs)
-
-    if @is_debug_mode
-        @info "$(myPid(getComm(target))): setupRemote: Calling doPostsAndWaits\n"
-    end
 
     remoteGIDs = resolve(distributor(data), exportGIDs)
 
@@ -180,11 +158,7 @@ function setupRemote(expor::Export{GID, PID, LID}, exportGIDs::AbstractArray{GID
         remoteLIDs[i] = lid(target, remoteGIDs[i])
     end
 
-    if @is_debug_mode
-        @info "$(myPid(getComm(target))): setupRemote: done\n"
-    end
 end
-
 ## Getters ##
 
 """

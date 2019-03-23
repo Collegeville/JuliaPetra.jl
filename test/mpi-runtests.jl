@@ -1,13 +1,7 @@
-#have debug enabled while running tests
-globalDebug = true
-
-using TypeStability
-#check stability while running tests
-enable_inline_stability_checks(true)
 
 using JuliaPetra
 using Test
-
+using TypeStability
 
 include("TestUtil.jl")
 
@@ -18,48 +12,10 @@ include("LocalCommTests.jl")
 
 #need access to MPI comm to ensure that tests only run on the root process
 #use distinct types
-mpiGID = UInt64
-mpiPID = UInt16
-mpiLID = UInt32
-mpiComm = MPIComm(mpiGID, mpiPID, mpiLID)
-
-if myPid(mpiComm) == 1
-    @testset "Serial tests" begin
-
-        #a generic serial comm for the tests that need to be called with a comm object
-        comm = SerialComm{UInt64, UInt16, UInt32}()
-
-        @testset "Util Tests" begin
-            include("UtilsTests.jl")
-        end
-
-        @testset "Comm Tests" begin
-            include("SerialCommTests.jl")
-            include("Import-Export Tests.jl")
-            include("BlockMapTests.jl")
-
-            runLocalCommTests(serialComm)
-
-            basicDirectoryTests(serialComm)
-        end
-
-        @testset "Data Structure Tests" begin
-            denseMultiVectorTests(serialComm)
-
-            include("SparseRowViewTests.jl")
-            include("LocalCSRGraphTests.jl")
-            include("LocalCSRMatrixTests.jl")
-
-            include("CSRGraphTests.jl")
-            include("CSRMatrixTests.jl")
-        end
-    end
-end
-
-GID = mpiGID
-PID = mpiPID
-LID = mpiLID
-comm = mpiComm
+GID = UInt64
+PID = UInt16
+LID = UInt32
+comm = MPIComm(GID, PID, LID)
 
 pid = myPid(comm)
 nProcs = numProc(comm)

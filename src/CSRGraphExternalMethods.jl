@@ -266,28 +266,21 @@ function insertLocalIndices(graph::CSRGraph{GID, PID, LID},
         throw(InvalidStateError("Row information was deleted"))
     end
 
-    if @is_debug_mode
-        colMap = getColMap(graph)
-        badColIndices = [ind for ind in indices if myLID(colMap, ind)]
-
-        if length(badColIndices) != 0
-            throw(InvalidArgumentError(
-                "Attempting to insert entries in owned row $localRow, "
-                * "at the following column indices: $indices.\n"
-
-                * "Of those, the following indices are not in "
-                * "the column map on this process: $badColIndices.\n"
-
-                * "Since the graph has a column map already, it is "
-                * "invalid to insert entries at those locations"))
-        end
-    end
+#    colMap = getColMap(graph)
+#    badColIndices = [ind for ind in indices if myLID(colMap, ind)]
+#    if length(badColIndices) != 0
+#        throw(InvalidArgumentError(
+#            "Attempting to insert entries in owned row $localRow, "
+#            * "at the following column indices: $indices.\n"
+#
+#            * "Of those, the following indices are not in "
+#            * "the column map on this process: $badColIndices.\n"
+#
+#            * "Since the graph has a column map already, it is "
+#            * "invalid to insert entries at those locations"))
+#    end
 
     insertLocalIndicesImpl(graph, localRow, indices)
-
-    if @is_debug_mode
-        @assert isLocallyIndexed(graph) "Post condtion violated"
-    end
 end
 
 
@@ -326,13 +319,12 @@ function insertGlobalIndices(graph::CSRGraph{GID, PID, LID}, globalRow::GID,
 
     myRow = lid(graph.rowMap, globalRow)
     if myRow != 0
-        if @is_debug_mode
+        if false #for debuggin
             if hasColMap(graph)
                 colMap = graph.colMap
 
-                #appearently jupyter can't render the generator if properly
                 badColInds = [index for index in indices
-                                        if myGid(colMap, index)==0]
+                                    if myGid(colMap, index)==0]
                 if length(badColInds) != 0
                     throw(InvalidArgumentError("$(myPid(getComm(graph))): "
                         * "Attempted to insert entries in owned row $globalRow, "
@@ -443,9 +435,6 @@ function getGlobalRowView(graph::CSRGraph{GID}, globalRow::GID)::AbstractArray{G
         throw(InvalidArgumentError("The graph's indices are currently stored as local indices, so a view with global column indices cannot be returned.  Use getGlobalRowCopy(::CSRGraph) instead"))
     end
 
-    if @is_debug_mode
-        @assert hasRowInfo(graph) "Graph row information was deleted"
-    end
     rowInfo = getRowInfoFromGlobalRow(graph, globalRow)
 
     if rowInfo.localRow != 0 && rowInfo.numEntries > 0
@@ -462,9 +451,6 @@ Base.@propagate_inbounds function getGlobalRowViewPtr(graph::CSRGraph{GID, PID, 
         throw(InvalidArgumentError("The graph's indices are currently stored as local indices, so a view with global column indices cannot be returned.  Use getGlobalRowCopy(::CSRGraph) instead"))
     end
 
-    if @is_debug_mode
-        @assert hasRowInfo(graph) "Graph row information was deleted"
-    end
     rowInfo = getRowInfoFromGlobalRow(graph, globalRow)
 
     isLocalRow = true
@@ -480,9 +466,6 @@ Base.@propagate_inbounds function getGlobalRowViewPtr(graph::CSRGraph{GID, PID, 
 end
 
 function getLocalRowView(graph::CSRGraph{GID}, localRow::GID)::AbstractArray{GID, 1} where {GID}
-    if @is_debug_mode
-        @assert hasRowInfo() "Graph row information was deleted"
-    end
     rowInfo = getRowInfoFromLocalRowIndex(graph, localRow)
 
     retVal = getLocalRowView(graph, rowInfo)
@@ -498,15 +481,7 @@ function getLocalRowView(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo{LID}
     end
 
     if rowInfo.localRow != 0 && rowInfo.numEntries > 0
-        indices = view(getLocalView(graph, rowInfo), 1:rowInfo.numEntries)
-
-        if @is_debug_mode
-            @assert(length(indices) == getNumEntriesInLocalRow(graph, localRow),
-                "length(indices) = $(length(indices)) "
-                * "!= getNumEntriesInLocalRow(graph, $localRow) "
-                * "= $(getNumEntriesInLocalRow(graph, localRow))")
-        end
-        indices
+        view(getLocalView(graph, rowInfo), 1:rowInfo.numEntries)
     else
         LID[]
     end
@@ -527,10 +502,6 @@ function resumeFill(graph::CSRGraph, plist::Dict)
     graph.indicesAreSorted = true
     graph.noRedundancies = true
     graph.fillComplete = false
-
-    if @is_debug_mode
-        @assert isFillActive(graph) && !isFillComplete(graph) "Post condition violated"
-    end
 end
 
 
@@ -591,10 +562,6 @@ function fillComplete(graph::CSRGraph{GID, PID, LID}, domainMap::BlockMap{GID, P
     fillLocalGraph(graph, plist)
     graph.fillComplete(true)
 
-    if @is_debug_mode
-        @assert !isFillActive(graph) && isFillComplete(graph) "post conditions violated"
-    end
-
     checkInternalState(graph)
 end
 
@@ -605,13 +572,11 @@ function makeColMap(graph::CSRGraph{GID, PID, LID}) where {GID, PID, LID}
 
     error, colMap = __makeColMap(graph, graph.domainMap)
 
-    if @is_debug_mode
-        comm = getComm(graph)
-        globalError = maxAll(comm, error)
+    comm = getComm(graph)
+    globalError = maxAll(comm, error)
 
-        if globalError
-            Base.error("makeColMap reports an error on at least one process")
-        end
+    if globalError
+        Base.error("makeColMap reports an error on at least one process")
     end
 
     graph.colMap = colMap
@@ -674,13 +639,7 @@ end
 Whether the graph's storage is optimized
 """
 function isStorageOptimized(graph::CSRGraph)
-    isOpt = length(graph.numRowEntries) == 0 && getLocalNumRows(graph) > 0
-    if (@is_debug_mode) && isOpt
-        @assert(getProfileType(graph) == STATIC_PROFILE,
-            "Matrix claims optimized storage by profile type "
-            * "is dynamic.  This shouldn't happend.")
-    end
-    isOpt
+    length(graph.numRowEntries) == 0 && getLocalNumRows(graph) > 0
 end
 
 """

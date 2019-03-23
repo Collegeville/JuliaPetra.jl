@@ -25,20 +25,11 @@ function basicTest(impor)
     @test true == data.isLocallyComplete
 end
 
-#ensure at least a one line, starting with the PID
-debugregex = Regex("^$(myPid(serialComm)):.+")
-
 # basic import
-impor = (@test_logs (:info, debugregex) match_mode=:any Import(srcMap, desMap))
-basicTest(impor)
-
-impor = (@test_logs (:info, debugregex) match_mode=:any Import(srcMap, desMap, nothing))
-basicTest(impor)
+basicTest(Import(srcMap, desMap))
+basicTest(Import(srcMap, desMap, nothing))
 
 
 # basic export
-expor = (@test_logs (:info, debugregex) match_mode=:any Export(srcMap, desMap))
-basicTest(expor)
-
-expor = (@test_logs (:info, debugregex) match_mode=:any Export(srcMap, desMap, nothing))
-basicTest(expor)
+basicTest(Export(srcMap, desMap))
+basicTest(Export(srcMap, desMap, nothing))

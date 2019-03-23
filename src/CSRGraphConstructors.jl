@@ -295,14 +295,6 @@ function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::Union{BlockMap{GID, P
                 "!= the local number of rows $lclNumRows as spcified by the input row Map"))
     end
 
-    if @is_debug_mode
-        for curRowCount in numEntPerRow
-            if curRowCount <= 0
-                throw(InvalidArgumentError("numEntPerRow[$r] = $curRowCount is not valid"))
-            end
-        end
-    end
-
     allocateIndices(graph, graph.indicesType, Array{LID, 1}(numEntPerRow))
 
     resumeFill(graph, plist)

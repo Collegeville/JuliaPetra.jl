@@ -14,11 +14,13 @@ function basicTests(graph)
 end
 
 graph = CSRGraph(map, UInt16(15), STATIC_PROFILE, Dict{Symbol, Any}())
+@test JuliaPetra.checkInternalState(graph)
 @test map == getMap(graph)
 @test STATIC_PROFILE == getProfileType(graph)
 basicTests(graph)
 
 graph = CSRGraph(map, UInt16(15), STATIC_PROFILE, Dict{Symbol, Any}(:debug=>true))
+@test JuliaPetra.checkInternalState(graph)
 @test map == getMap(graph)
 @test STATIC_PROFILE == getProfileType(graph)
 basicTests(graph)
@@ -26,6 +28,7 @@ insertGlobalIndices(graph, 1, [2, 3])
 @test 2 == getNumEntriesInGlobalRow(graph, 1)
 
 graph2 = CSRGraph(map, UInt16(15), DYNAMIC_PROFILE, Dict{Symbol, Any}(:debug=>true))
+@test JuliaPetra.checkInternalState(graph)
 @test map == getMap(graph2)
 @test DYNAMIC_PROFILE == getProfileType(graph2)
 basicTests(graph2)

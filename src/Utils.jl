@@ -1,21 +1,6 @@
 
 #minor utility code that does belong anywhere else
 
-"""
-Returns the global debug value
-
-Has an optional ignored argument
-"""
-macro is_debug_mode()
-    if isdefined(Main, :globalDebug)
-        Main.globalDebug::Bool
-    else
-        false
-    end
-end
-
-
-
 #used in implementation of CSRGraph and CSRMatrix
 function computeOffsets(rowPtrs::AbstractArray{<: Integer, 1}, numEnts::Integer)
     numOffsets = length(rowPtrs)

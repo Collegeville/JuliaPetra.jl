@@ -5,6 +5,31 @@
 
 #TODO make testing version of checkInternalState to run during testing
 
+using TypeStability
+
+
+#### Type Stability Tests ####
+method_sigs = [(CSRMatrix{D, G, P, L}, L)
+                for (D, G, P, L) in Base.Iterators.product(
+                    [Float64, ComplexF32], #Data
+                    [UInt64, Int64, UInt32], #GID
+                    [UInt8, Int8, UInt32], #PID
+                    [UInt32, Int32]) #LID
+                ]
+@test is_stable(check_function(JuliaPetra.getLocalRowViewPtr, method_sigs, RegexDict((r"rowValues", Union{Vector, SubArray}))))
+
+
+method_sigs = [(DenseMultiVector{D, G, P, L}, CSRMatrix{D, G, P, L},
+                DenseMultiVector{D, G, P, L}, TransposeMode, D, D)
+                for (D, G, P, L) in Base.Iterators.product(
+                    [Float64, ComplexF32], #Data
+                    [UInt64, Int64, UInt32], #GID
+                    [UInt8, Int8, UInt32], #PID
+                    [UInt32, Int32]) #LID
+            ]
+@test is_stable(check_function(localApply, method_sigs, RegexDict((r"#temp#@_[0-9]+", Union{Nothing, Tuple{UInt32, UInt32}, Tuple{Int32, Int32}}))))
+
+
 #### Serial Tests####s
 
 n = 8

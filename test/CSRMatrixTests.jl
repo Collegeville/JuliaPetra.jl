@@ -29,7 +29,7 @@ method_sigs = [(DenseMultiVector{D, G, P, L}, CSRMatrix{D, G, P, L},
                     [UInt8, Int8, UInt32], #PID
                     [UInt32, Int32]) #LID
             ]
-report = check_function(localApply, method_sigs, RegexDict((r"#temp#@_[0-9]+", Union{Nothing, Tuple{UInt32, UInt32}, Tuple{Int32, Int32}})))
+report = check_function(localApply, method_sigs, RegexDict((r"(?:#temp#)?@_[0-9]+", Union{Nothing, Tuple{UInt32, UInt32}, Tuple{Int32, Int32}})))
 stability_warn(localApply, report)
 @test is_stable(report)
 

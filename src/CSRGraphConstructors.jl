@@ -191,6 +191,7 @@ function CSRGraph(rowMap::BlockMap{GID, PID, LID}, maxNumEntriesPerRow::Integer,
     CSRGraph(rowMap, nothing, LID(maxNumEntriesPerRow), pftype, plist)
 end
 
+#= Should be handled by the following constructors
 function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
         maxNumEntriesPerRow::Integer, pftype::ProfileType; plist...) where {
         GID <: Integer, PID <: Integer, LID <: Integer}
@@ -201,14 +202,15 @@ function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LI
         GID <: Integer, PID <: Integer, LID <: Integer}
     CSRGraph(rowMap, colMap, LID(maxNumEntriesPerRow), pftype, plist)
 end
+=#
 
 function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::Union{BlockMap{GID, PID, LID}, Nothing},
-        maxNumEntriesPerRow::LID, pftype::ProfileType; plist...) where {
+        maxNumEntriesPerRow::Integer, pftype::ProfileType; plist...) where {
         GID <: Integer, PID <: Integer, LID <: Integer}
     CSRGraph(rowMap, colMap, maxNumEntriesPerRow, pftype, Dict(plist))
 end
 function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::Union{BlockMap{GID, PID, LID}, Nothing},
-        maxNumEntriesPerRow::LID, pftype::ProfileType, plist::Dict) where {
+        maxNumEntriesPerRow::Integer, pftype::ProfileType, plist::Dict) where {
         GID <: Integer, PID <: Integer, LID <: Integer}
     graph = CSRGraph(
         rowMap,
@@ -229,8 +231,7 @@ function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::Union{BlockMap{GID, P
         (colMap == nothing) ? GLOBAL_INDICES : LOCAL_INDICES,
         plist
     )
-
-    allocateIndices(graph, graph.indicesType, maxNumEntriesPerRow)
+    allocateIndices(graph, graph.indicesType, LID(maxNumEntriesPerRow))
 
     resumeFill(graph, plist)
     checkInternalState(graph)

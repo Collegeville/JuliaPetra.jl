@@ -396,7 +396,7 @@ end
     if rowInfo.allocSize > 0
         if length(graph.globalIndices1D) != 0
             return (pointer(graph.globalIndices1D, rowInfo.offset1D), rowInfo.allocSize)
-        elseif length(graph.globalIndices2D[rowInfo.localRow]) == 0
+        elseif length(graph.globalIndices2D[rowInfo.localRow]) != 0
             baseArray = graph.globalIndices2D[rowInfo.localRow]::Vector{GID}
             return (pointer(baseArray), GID(length(baseArray)))
         end
@@ -409,7 +409,7 @@ function getLocalView(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo{LID}) whe
         if length(graph.localIndices1D) != 0
             range = rowInfo.offset1D : rowInfo.offset1D + rowInfo.allocSize-LID(1)
             return view(graph.localIndices1D, range)
-        elseif length(graph.localIndices2D[rowInfo.localRow]) == 0
+        elseif length(graph.localIndices2D[rowInfo.localRow]) != 0
             baseArray = graph.localIndices2D[rowInfo.localRow]
             return view(baseArray, LID(1):LID(length(baseArray)))
         end
@@ -422,7 +422,7 @@ Base.@propagate_inbounds @inline function getLocalViewPtr(graph::CSRGraph{GID, P
     if rowInfo.allocSize > 0
         if length(graph.localIndices1D) != 0
             return (pointer(graph.localIndices1D, rowInfo.offset1D), rowInfo.allocSize)
-        elseif length(graph.localIndices2D[rowInfo.localRow]) == 0
+        elseif length(graph.localIndices2D[rowInfo.localRow]) != 0
             baseArray::Array{LID, 1} = graph.localIndices2D[rowInfo.localRow]
             return (pointer(baseArray), LID(length(baseArray)))
         end

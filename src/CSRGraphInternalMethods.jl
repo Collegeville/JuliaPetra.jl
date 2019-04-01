@@ -56,7 +56,7 @@ getLocalGraph(graph::CSRGraph) = graph.localGraph
 function updateGlobalAllocAndValues(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo{LID}, newAllocSize::Integer, rowValues::AbstractArray{Data, 1}) where {Data, GID, PID, LID}
 
     resize!(graph.globalIndices2D[rowInfo.localRow], newAllocSize)
-    resize!(rowVals, newAllocSize)
+    resize!(rowValues, newAllocSize)
 
     nothing
 end
@@ -211,10 +211,10 @@ end
         numEntries = (length(graph.numRowEntries) == 0 ?
             allocSize : LID(graph.numRowEntries[row]))
     else #dynamic profile
-        if isLocallyIndexed(graph) && length(graph.localIndices2D) == 0
+        if isLocallyIndexed(graph) && length(graph.localIndices2D) != 0
             allocSize = LID(length(graph.localIndices2D[row]))
 
-        elseif isGloballyIndexed(graph) && length(graph.globalIndices2D) == 0
+        elseif isGloballyIndexed(graph) && length(graph.globalIndices2D) != 0
             allocSize = LID(length(graph.globalIndices2D[row]))
         end
         numEntries = (length(graph.numRowEntries) == 0 ?
@@ -252,7 +252,51 @@ end
 function allocateIndices(graph::CSRGraph{GID, <:Integer, LID},
         lg::IndexType, numAllocPerRow::Integer) where {
         GID <: Integer, LID <: Integer}
-    allocateIndices(graph, lg, numAllocPerRow, i-> numAllocPerRow)
+
+# Manually inlined since the function version is too expensive
+
+    @assert(isLocallyIndexed(graph) == (lg == LOCAL_INDICES),
+        "Graph is $(isLocallyIndexed(graph) ? "" : "not ")locally indexed, but lg=$lg")
+    @assert(isGloballyIndexed(graph) == (lg == GLOBAL_INDICES),
+        "Graph is $(isGloballyIndexed(graph) ? "" : "not ")globally indexed but lg=$lg")
+
+    numRows = getLocalNumRows(graph)
+
+    if getProfileType(graph) == STATIC_PROFILE
+        rowPtrs = Array{LID, 1}(undef, numRows + 1)
+
+        computeOffsets(rowPtrs, numAlloc)
+
+        graph.rowOffsets = rowPtrs
+        numInds = rowPtrs[numRows+1]
+
+        if lg == LOCAL_INDICES
+            graph.localIndices1D = Array{LID, 1}(undef, numInds)
+        else
+            graph.globalIndices1D = Array{GID, 1}(undef, numInds)
+        end
+        graph.storageStatus = STORAGE_1D_UNPACKED
+    else
+        if lg == LOCAL_INDICES
+            graph.localIndices2D = Array{Array{LID, 1}, 1}(undef, numRows)
+            for row = 1:numRows
+                graph.localIndices2D[row] = Array{LID, 1}(undef, numAllocPerRow)
+            end
+        else #lg == GLOBAL_INDICES
+            graph.globalIndices2D = Array{Array{GID, 1}, 1}(undef, numRows)
+            for row = 1:numRows
+                graph.globalIndices2D[row] = Array{GID, 1}(undef, numAllocPerRow)
+            end
+        end
+        graph.storageStatus = STORAGE_2D
+    end
+
+    graph.indicesType = lg
+
+    if numRows > 0
+        numRowEntries = zeros(LID, numRows)
+        graph.numRowEntries = numRowEntries
+    end
 end
 
 function allocateIndices(graph::CSRGraph{GID, <:Integer, LID},

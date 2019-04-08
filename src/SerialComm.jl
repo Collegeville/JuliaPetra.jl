@@ -130,3 +130,5 @@ end
 function createDistributor(comm::SerialComm{GID, PID, LID})::SerialDistributor{GID, PID, LID} where GID <: Integer where PID <: Integer where LID <: Integer
     SerialDistributor{GID, PID, LID}()
 end
+
+getComm(::SerialDistributor{GID, PID, LID}) where {GID, PID, LID} = SerialComm{GID, PID, LID}()

@@ -65,8 +65,6 @@ Additionally, Julia's `mul!` and `*` functions are implemented for `RowMatrix`-`
 abstract type RowMatrix{Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer} <: AbstractArray{Data, 2}
 end
 
-#REVIEW look into requiring A_mul_B! instead and having apply! call that
-
 isFillActive(matrix::RowMatrix) = !isFillComplete(matrix)
 isLocallyIndexed(matrix::RowMatrix) = !isGloballyIndexed(matrix)
 

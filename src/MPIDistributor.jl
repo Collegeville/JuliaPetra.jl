@@ -341,6 +341,11 @@ function createReverseDistributor(dist::MPIDistributor{GID, PID, LID}
 end
 
 
+
+#### General Interface ####
+
+getComm(dist::MPIDistributor) = dist.comm
+
 #### Distributor interface ####
 
 function createFromSends(dist::MPIDistributor{GID, PID, LID}, exportPIDs::AbstractArray{PID, 1})::Integer where GID <:Integer where PID <:Integer where LID <:Integer

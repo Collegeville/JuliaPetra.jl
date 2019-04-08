@@ -14,8 +14,7 @@ in for the subtype:
 
     createFromSends(dist::DistributorImpl,exportPIDs::AbstractArray{PID})::Integer where PID <:Integer
 Sets up the Distributor object using a list of process IDs to which we
-export and the number of IDs being exported.  Returns the number of
-IDs this processor will be receiving.
+export.  Returns the number of IDs this processor will be receiving.
 
     createFromRecvs(dist::DistributorImpl, remoteGIDs::AbstractArray{GID}, remotePIDs::AbstractArray{PID})::Tuple{AbstractArray{GID}, AbstractArray{PID}} where GID <: Integer where PID <: Integer
 Sets up the Distributor object using a list of remote global IDs and corresponding
@@ -72,7 +71,7 @@ objects set to this processor
 """
 function resolve(dist::Distributor, exportObjs::AbstractArray{T})::AbstractArray{T} where T
     resolvePosts(dist, exportObjs)
-    resolveWaits(dist)
+    resolveWaits(dist)::AbstractArray{T}
 end
 
 """

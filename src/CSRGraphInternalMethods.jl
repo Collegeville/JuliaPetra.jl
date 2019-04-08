@@ -265,7 +265,7 @@ function allocateIndices(graph::CSRGraph{GID, <:Integer, LID},
     if getProfileType(graph) == STATIC_PROFILE
         rowPtrs = Array{LID, 1}(undef, numRows + 1)
 
-        computeOffsets(rowPtrs, numAlloc)
+        computeOffsets(rowPtrs, numAllocPerRow)
 
         graph.rowOffsets = rowPtrs
         numInds = rowPtrs[numRows+1]

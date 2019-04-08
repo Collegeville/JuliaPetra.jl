@@ -49,7 +49,9 @@ mutable struct MPIDistributor{GID <: Integer, PID <: Integer, LID <: Integer} <:
 
     planReverse::Union{MPIDistributor{GID, PID, LID}, Nothing}
 
-    importObjs::Union{Vector{Vector{UInt8}}, Nothing}
+    importObjs::Union{Vector{<:Vector}, Nothing}
+
+    datatype::DataType
 
     #never seem to be used
     #lastRoundBytesSend::Integer
@@ -58,7 +60,7 @@ mutable struct MPIDistributor{GID <: Integer, PID <: Integer, LID <: Integer} <:
     function MPIDistributor(comm::MPIComm{GID, PID, LID}) where GID <: Integer where PID <: Integer where LID <: Integer
         new{GID, PID, LID}(comm, [], [], [], [], [], [], false, [], [], [], [], [],
             0, 0, 0, 0, 0, 0, [], [],  nothing,
-            nothing)
+            nothing, Nothing)
     end
 end
 
@@ -341,6 +343,76 @@ function createReverseDistributor(dist::MPIDistributor{GID, PID, LID}
 end
 
 
+#### Internal Utilities ####
+"""
+    arraytobytes(value::Vector{T})::Vector{UInt8}
+
+Converts the given vector to a list of bytes.
+"""
+function arraytobytes(value::AbstractVector{T}) where T
+    if isbitstype(T)
+        # if T is a bits type, then just use the buffer as it
+        sz = sizeof(value)
+        bytes_ptr = convert(Ptr{UInt8}, Base.unsafe_convert(Ptr{T}, value))
+        unsafe_wrap(Array, bytes_ptr, sz)
+    else
+        # otherwise write using an IOBuffer
+        buffer = IOBuffer(;sizehint=sizeof(value))
+        write(buffer, value)
+        take!(buffer)
+    end
+end
+
+function arraytobytes(value::AbstractVector{<:AbstractVector})
+    buffer = IOBuffer()
+    for v in value
+        write(buffer, UInt32(length(v)))
+        for elt in v
+            write(buffer, elt)
+        end
+    end
+    take!(buffer)
+end
+
+
+"""
+    bytestoarray(bytes::Vector{UInt8}, ::Type{T})::Vector{T} where T
+
+Converts a list of bytes to a vector with contents of the given type
+"""
+function bytestoarray(bytes::AbstractVector{UInt8}, ::Type{T}) where T
+    sz = fld(length(bytes), sizeof(T))
+    value = Vector{T}(undef, sz)
+    if isbitstype(T)
+        bytes_ptr = convert(Ptr{T}, Base.unsafe_convert(Ptr{UInt8}, bytes))
+        value_ptr = Base.unsafe_convert(Ptr{T}, value)
+        Base.unsafe_copyto!(value_ptr, bytes_ptr, sz)
+    else
+        buffer = IOBuffer(bytes)
+        i = 1
+        while !eof(buffer)
+            value[i] = read(buffer, T)
+            i+=1
+        end
+    end
+    value
+end
+
+
+function bytestoarray(bytes::AbstractVector{UInt8}, ::Type{Vector{T}}) where T
+    buffer = IOBuffer(bytes)
+    value = Vector{Vector{T}}()
+    while !eof(buffer)
+        len = read(buffer, UInt32)
+        elt = Vector{T}(undef, len)
+        for i in 1:len
+            elt[i] = read(buffer, T)
+        end
+        push!(value, elt)
+    end
+    value
+end
+
 
 #### General Interface ####
 
@@ -379,6 +451,8 @@ end
 function resolvePosts(dist::MPIDistributor{GID, PID, LID}, exportObjs::AbstractArray{T, 1}) where {T, GID<:Integer, PID<:Integer, LID<:Integer}
     myProc = myPid(dist.comm)
 
+    dist.datatype = T
+
     nBlocks::GID = dist.numSends + dist.selfMsg
     procIndex::GID = 1
     while procIndex <= nBlocks && dist.procs_to[procIndex] < myProc
@@ -392,12 +466,11 @@ function resolvePosts(dist::MPIDistributor{GID, PID, LID}, exportObjs::AbstractA
 
     j::GID = 1
 
-    buffer = IOBuffer()
     if length(dist.indices_to) == 0 #data already grouped by processor
         for i = 1:nBlocks
-            serialize(buffer, exportObjs[j:j+dist.lengths_to[i]-1])
+            # note that the range needs to be signed ints because Julia doesn't treat unsigened ints as first class
+            exportBytes[i] = arraytobytes(view(exportObjs, Int64(j):Int64(j+dist.lengths_to[i]-1)))
             j += dist.lengths_to[i]
-            exportBytes[i] = take!(buffer)
         end
     else #data not grouped by proc, must be grouped first
         for i = 1:nBlocks
@@ -406,8 +479,7 @@ function resolvePosts(dist::MPIDistributor{GID, PID, LID}, exportObjs::AbstractA
             for k = 1:dist.lengths_to[i]
                 sendArray[k] = exportObjs[dist.indices_to[j+k-1]]
             end
-            serialize(buffer, sendArray)
-            exportBytes[i] = take!(buffer)
+            exportBytes[i] = arraytobytes(sendArray)
         end
     end
 
@@ -503,15 +575,18 @@ function resolveWaits(dist::MPIDistributor)::Array
         throw(InvalidStateError("Cannot resolve waits when no posts have been made"))
     end
 
-    importObjs = dist.importObjs
-    deserializedObjs = Vector{Vector{Any}}(undef, length(importObjs))
+    T = dist.datatype
+    barrier(dist.comm)#run into issues deserializing otherwise
+    importObjs = dist.importObjs::Vector{Vector{UInt8}}
+    deserializedObjs = Vector{Vector{T}}(undef, length(importObjs))
     for i = 1:length(importObjs)
-        deserializedObjs[i] = deserialize(IOBuffer(importObjs[i]))
+        deserializedObjs[i] = bytestoarray(importObjs[i], T)
     end
+    results = deserializedObjs
 
     dist.importObjs = nothing
 
-    reduce(vcat, deserializedObjs; init=[])
+    reduce(vcat, results; init = T[])
 end
 
 

@@ -184,12 +184,21 @@ function packAndPrepare(source::MultiVector{Data, GID, PID, LID},
         target::MultiVector{Data, GID, PID, LID}, exportLIDs::AbstractArray{LID, 1},
         distor::Distributor{GID, PID, LID})::Array where {
             Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer}
-    exports = Array{Array{Data, 1}}(undef, length(exportLIDs))
+    numVects = Int(numVectors(source))
+    packAndPrepare_helper(source, target, exportLIDs, distor, Val{numVects})
+end
+#Use helper function to get numVects as a compile time constant
+function packAndPrepare_helper(source::MultiVector{Data, GID, PID, LID},
+            target::MultiVector{Data, GID, PID, LID}, exportLIDs::AbstractArray{LID, 1},
+            distor::Distributor{GID, PID, LID}, ::Type{Val{numVects}})::Array where {
+                Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer, numVects}
+    exports = Vector{NTuple{numVects, Data}}(undef, length(exportLIDs))
     sourceData = getLocalArray(source)
-    for i in LID(1):length(exports)
-        @inbounds exports[i] = Vector{Data}(undef, numVectors(source))
-        for vect in LID(1):numVectors(source)
-            @inbounds exports[i][vect] = sourceData[exportLIDs[i], vect]
+    bytes_ptr = convert(Ptr{Data}, Base.unsafe_convert(Ptr{NTuple{numVects, Data}}, exports))
+    for i in 1:length(exportLIDs)
+        i_base = (i-1)*numVects
+        for j in 1:numVects
+            @inbounds unsafe_store!(bytes_ptr, sourceData[exportLIDs[i], j], i_base+j)
         end
     end
     exports
@@ -199,10 +208,20 @@ function unpackAndCombine(target::MultiVector{Data, GID, PID, LID},
         importLIDs::AbstractArray{LID, 1}, imports::AbstractArray,
         distor::Distributor{GID, PID, LID},cm::CombineMode) where {
             Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer}
+    numVects = Int(numVectors(target))
+    unpackAndCombine_helper(target, importLIDs, imports, distor, cm, Val{numVects})
+end
+#Use helper function to get numVects as a compile time constant
+function unpackAndCombine_helper(target::MultiVector{Data, GID, PID, LID},
+        importLIDs::AbstractArray{LID, 1}, imports::AbstractArray,
+        distor::Distributor{GID, PID, LID},cm::CombineMode, ::Type{Val{numVects}}) where {
+            Data <: Number, GID <: Integer, PID <: Integer, LID <: Integer, numVects}
     targetData = getLocalArray(target)
-    for i = LID(1):length(importLIDs)
-        for vect in LID(1):numVectors(target)
-            @inbounds targetData[importLIDs[i], vect] = imports[i][vect]
+    bytes_ptr = convert(Ptr{Data}, Base.unsafe_convert(Ptr{NTuple{numVects, Data}}, imports))
+    for i in 1:length(importLIDs)
+        i_base = (i-1)*numVects
+        for j in 1:numVects
+            @inbounds targetData[importLIDs[i], j] = unsafe_load(bytes_ptr, i_base+j)
         end
     end
 end

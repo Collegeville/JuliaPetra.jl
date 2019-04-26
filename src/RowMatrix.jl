@@ -694,3 +694,7 @@ function Base.getindex(A::RowMatrix, I::Vararg{Int, 2})
 end
 
 #TODO look into setindex!
+
+function Base.show(io::IO, mat::RowMatrix)
+    print(io, "$(typeof(mat)) on process $(myPid(getComm(mat)))")
+end

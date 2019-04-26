@@ -333,7 +333,7 @@ function fillLocalGraphAndMatrix(matrix::CSRMatrix{Data, GID, PID, LID},
     myGraph = matrix.myGraph
     localMatrix = matrix.localMatrix
 
-   matrix.localMatrix.graph.entries = myGraph.localIndices1D
+    matrix.localMatrix.graph.entries = myGraph.localIndices1D
 
     #most of the debug sections were taken out
     if getProfileType(matrix) == DYNAMIC_PROFILE
@@ -364,7 +364,7 @@ function fillLocalGraphAndMatrix(matrix::CSRMatrix{Data, GID, PID, LID},
             localTotalNumEntries = 0
 
             ptrs = Array{LID, 1}(undef, localNumRows + 1)
-            numRowEnt = myGraph.numRowEntries
+            numRowEntries = myGraph.numRowEntries
             localTotalNumEntries = computeOffsets(ptrs, numRowEntries)
 
             inds = Array{LID, 1}(undef, localTotalNumEntries)

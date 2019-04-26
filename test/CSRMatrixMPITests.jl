@@ -28,15 +28,15 @@ two = Data[2]
 
 for i = 1:numMyElts
     if myGlobalElts[i] == 1
-        indices = LID[2]
+        indices = GID[2]
     elseif myGlobalElts[i] == numGlobalElts
-        indices = LID[numGlobalElts-2]
+        indices = GID[numGlobalElts-2]
     else
-        indices = LID[myGlobalElts[i]-1, myGlobalElts[i]+1]
+        indices = GID[myGlobalElts[i]-1, myGlobalElts[i]+1]
     end
 
     insertGlobalValues(A, myGlobalElts[i], indices, values)
-    insertGlobalValues(A, myGlobalElts[i], LID[myGlobalElts[i]], two)
+    insertGlobalValues(A, myGlobalElts[i], GID[myGlobalElts[i]], two)
 end
 
 fillComplete(A, map, map)

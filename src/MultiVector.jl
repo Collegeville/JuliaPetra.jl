@@ -235,7 +235,7 @@ Base.eltype(::MultiVector{Data}) where Data = Data
 Base.size(A::MultiVector) = (Int(globalLength(A)), Int(numVectors(A)))
 
 #TODO this might break for funky maps, however indices needs to return a unit range
-Base.axes(A::MultiVector) = (minMyGID(A.map):maxMyGID(A.map), 1:numVectors(A))
+Base.axes(A::MultiVector) = (minMyGID(getMap(A)):maxMyGID(getMap(A)), 1:numVectors(A))
 
 function Base.getindex(A::MultiVector, row::Integer, col::Integer)
     @boundscheck begin
@@ -275,7 +275,7 @@ end
 
 function Base.setindex!(A::MultiVector, v, row::Integer, col::Integer)
     @boundscheck begin
-        if !(1<=col<=A.numVectors)
+        if !(1<=col<=numVectors(A))
             throw(BoundsError(A, (row, col)))
         end
     end
@@ -293,7 +293,7 @@ function Base.setindex!(A::MultiVector, v, row::Integer, col::Integer)
 end
 
 function Base.setindex!(A::MultiVector, v, i::Integer)
-    if A.numVectors != 0
+    if numVectors(A) != 0
         throw(ArgumentError("Can only use single index if there is just 1 vector"))
     end
 

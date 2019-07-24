@@ -3,9 +3,16 @@ import MPI
 
 #TODO document
 
+# The RSend constand isn't defined on windows
+const MPI_RSEND = if Sys.iswindows()
+                      (:MPI_RSEND, MPI.libmpi)
+                  else
+                      MPI.MPI_RSEND
+                  end
+
 function MPI_Rsend(buf::MPI.MPIBuffertype{T}, count::Integer,
                 dest::Integer, tag::Integer, comm::MPI.Comm) where T
-    ccall(MPI.MPI_RSEND, Nothing,
+    ccall(MPI_RSEND, Nothing,
         (Ptr{T}, Ref{Cint}, Ref{Cint}, Ref{Cint}, Ref{Cint}, Ref{Cint},
            Ref{Cint}),
         buf, count, MPI.mpitype(T), dest, tag, comm.val, 0)

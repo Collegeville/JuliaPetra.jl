@@ -6,6 +6,6 @@ Note that JuliaPetra uses Single Program Multiple Data parallelism instead of th
 
 # Organization
 JuliaPetra is organized into a series of layers.
-* The [Communications Layer](@ref) contains an interface for Single Program Multiple Data parallel systems
-* The [Problem Distribution Layer](@ref) manages how the problem is distributed across the processes
-* The [Linear Algebra Layer](@ref) provides the interfaces and implementations for linear algebra objects
+* The [Communications Layer](CommunicationLayer.md) contains an interface for Single Program Multiple Data parallel systems
+* The [Problem Distribution Layer](ProblemDistributionLayer.md) manages how the problem is distributed across the processes
+* The [Linear Algebra Layer](LinearAlgebraLayer.md) provides the interfaces and implementations for linear algebra objects

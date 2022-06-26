@@ -4,6 +4,7 @@ using Test
 using TypeStability
 
 include("TestUtil.jl")
+include("../src/MPIComm.jl")
 
 # function based tests
 include("DenseMultiVectorTests.jl")

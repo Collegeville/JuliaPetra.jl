@@ -530,7 +530,7 @@ end
 function remoteIDList(map::BlockMap{GID, PID, LID}, gidList::AbstractArray{GID}
         )::Tuple{AbstractArray{PID}, AbstractArray{LID}} where GID <: Integer where PID <: Integer where LID <: Integer
     data = map.data
-    if data.directory == nothing
+    if data.directory === nothing
         data.directory = createDirectory(data.comm, map)
     end
 
@@ -743,7 +743,7 @@ function determineIsOneToOne(map::BlockMap)::Bool
     if numProc(data.comm) < 2
         true
     else
-        if data.directory == nothing
+        if data.directory === nothing
             data.directory = createDirectory(data.comm, map)
         end
        gidsAllUniquelyOwned(data.directory)

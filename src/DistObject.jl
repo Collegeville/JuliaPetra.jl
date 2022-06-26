@@ -93,7 +93,7 @@ end
 
 function doImport(source, target, importer::Union{Import{GID, PID, LID}, Nothing},
         cm::CombineMode) where {GID <:Integer, PID <: Integer, LID <: Integer}
-    if importer != nothing
+    if importer !== nothing
         doImport(source, target, importer, cm)
     end
 end
@@ -115,7 +115,7 @@ end
 
 function doExport(source, target, exporter::Union{Export{GID, PID, LID}, Nothing},
         cm::CombineMode) where {GID <:Integer, PID <: Integer, LID <: Integer}
-    if exporter != nothing
+    if exporter !== nothing
         doImport(source, target, exporter, cm)
     end
 end
@@ -137,7 +137,7 @@ end
 
 function doImport(source, target, exporter::Union{Export{GID, PID, LID}, Nothing},
         cm::CombineMode) where {GID <:Integer, PID <: Integer, LID <: Integer}
-    if exporter != nothing
+    if exporter !== nothing
         doImport(source, target, exporter, cm)
     end
 end
@@ -159,7 +159,7 @@ end
 
 function doExport(source, target, importer::Union{Import{GID, PID, LID}, Nothing},
         cm::CombineMode) where {GID <:Integer, PID <: Integer, LID <: Integer}
-    if importer != nothing
+    if importer !== nothing
         doImport(source, target, importer, cm)
     end
 end

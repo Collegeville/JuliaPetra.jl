@@ -350,15 +350,15 @@ end
 
 function makeImportExport(graph::CSRGraph{GID, PID, LID}) where {
         GID <: Integer, PID <: Integer, LID <: Integer}
-    @assert (graph.colMap != nothing) "Cannot make imports and exports without a column map"
+    @assert (graph.colMap !== nothing) "Cannot make imports and exports without a column map"
 
-    if graph.importer == nothing
+    if graph.importer === nothing
         if !sameAs(graph.domainMap, graph.colMap)
             graph.importer = Import(graph.domainMap, graph.colMap)
         end
     end
 
-    if graph.exporter == nothing
+    if graph.exporter === nothing
         if !sameAs(graph.rangeMap, graph.rowMap)
             graph.exporter = Export(graph.rowMap, graph.rangeMap)
         end
@@ -378,9 +378,9 @@ function checkInternalState(graph::CSRGraph)
         "Graph must be either fill active or fill "
         * "complete$(isFillActive(graph) ? "not both" : "").")
     @assert(!isFillComplete(graph)
-            || (graph.colMap != nothing
-                && graph.domainMap != nothing
-                && graph.rangeMap != nothing),
+            || (graph.colMap !== nothing
+                && graph.domainMap !== nothing
+                && graph.rangeMap !== nothing),
         "Graph is fill complete, but at least one of {column, range, domain} map is null")
     @assert((graph.storageStatus != STORAGE_1D_PACKED
                 && graph.storageStatus != STORAGE_1D_UNPACKED)
@@ -853,14 +853,14 @@ function __makeColMap(graph::CSRGraph{GID, PID, LID}, domMap::Union{BlockMap{GID
         ) where {GID, PID, LID}
     error = false
 
-    if domMap == nothing
+    if domMap === nothing
         return nothing
     end
 
     if isLocallyIndexed(graph)
         colMap = graph.colMap
 
-        if colMap == nothing
+        if colMap === nothing
             warn("$(myPid(getComm(graph))): The graph is locally indexed, but does not have a column map")
 
             error = true

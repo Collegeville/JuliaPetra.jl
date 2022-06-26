@@ -2,7 +2,8 @@
 #these tests take way too long to be included in the normal unit tests
 
 using JuliaPetra
-include("TypeStability.jl")
+using TypeStability
+#include("TypeStability.jl")
 include("TestUtil.jl")
 
 println("starting csrmatrix stability tests")

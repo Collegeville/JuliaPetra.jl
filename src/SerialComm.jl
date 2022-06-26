@@ -50,7 +50,7 @@ function resolvePosts(dist::SerialDistributor, exportObjs::AbstractArray)
 end
 
 function resolveWaits(dist::SerialDistributor)::AbstractArray
-    if dist.post == nothing
+    if dist.post === nothing
         throw(InvalidStateError("Must post before waiting"))
     end
 
@@ -64,7 +64,7 @@ function resolveReversePosts(dist::SerialDistributor, exportObjs::AbstractArray)
 end
 
 function resolveReverseWaits(dist::SerialDistributor)::AbstractArray
-     if dist.reversePost == nothing
+     if dist.reversePost === nothing
         throw(InvalidStateError("Must reverse post before reverse waiting"))
     end
 

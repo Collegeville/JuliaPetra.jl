@@ -664,7 +664,7 @@ end
 #### Row Matrix functions ####
 
 getRowMap(mat::CSRMatrix) = mat.rowMap
-hasColMap(mat::CSRMatrix) = mat.colMap != nothing
+hasColMap(mat::CSRMatrix) = !isnothing(mat.colMap)
 getColMap(mat::CSRMatrix) = mat.colMap
 getGraph(mat::CSRMatrix) = mat.myGraph
 
@@ -921,7 +921,8 @@ function getLocalDiagCopy(matrix::CSRMatrix{Data, GID, PID, LID})::MultiVector{D
         localColMap = getLocalMap(colMap)
         localMatrix = matrix.localMatrix
 
-        diag1D[:] = getDiagCopyWithoutOffsets(matrix, localRowMap, localColMap, localMatrix)
+        #diag1D[:] = getDiagCopyWithoutOffsets(matrix, localRowMap, localColMap, localMatrix)
+        diag1D[:] = getDiagCopyWithoutOffsets(localRowMap, localColMap, localMatrix)
 
         diag
     else

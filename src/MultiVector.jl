@@ -44,16 +44,31 @@ Returns the local length of the vectors in the MultiVector
 """
 localLength(mVect::MultiVector) = numMyElements(getMap(mVect))
 
+"""
+    Base.fill!(::MultiVector, values)
+
+Returns a filled multivector, filled with the given values
+"""
 function Base.fill!(mVect::MultiVector, values)
     fill!(getLocalArray(mVect), values)
     mVect
 end
 
+"""
+    scale!(::MultiVector, ::Number)
+
+Returns a new multivector scaled by the given alpha
+"""
 function scale!(mVect::MultiVector, alpha::Number)
     rmul!(getLocalArray(mVect), alpha)
     mVect
 end
 
+"""
+    scale!(::MultiVector, ::AbstractArray)
+
+Returns a new multivector scaled by values in the given array
+"""
 function scale!(mVect::MultiVector{Data, GID, PID, LID}, alpha::AbstractArray{<:Number, 1}) where {Data, GID, PID, LID}
     for v in LID(1):numVectors(mVect)
         @inbounds getVectorView(mVect, v)[:] *= alpha[v]
@@ -61,6 +76,11 @@ function scale!(mVect::MultiVector{Data, GID, PID, LID}, alpha::AbstractArray{<:
     mVect
 end
 
+"""
+    dot(::MultiVector, ::MutliVector) :: AbstractArray
+
+Returns an array that is the dot product of two given multivectors
+"""
 function dot(vect1::MultiVector{Data, GID, PID, LID}, vect2::MultiVector{Data, GID, PID, LID}
         )::AbstractArray{Data, 2} where {Data, GID, PID, LID}
     numVects = numVectors(vect1)
@@ -87,6 +107,11 @@ function dot(vect1::MultiVector{Data, GID, PID, LID}, vect2::MultiVector{Data, G
     sumAll(getComm(vect1), dotProducts)::Array{Data, 2}
 end
 
+"""
+    norm(::MultiVector, ::Real)
+
+Computes the norm of a Multivector where the number given determines the type of norm (e.g., L1, L2, etc.)
+"""
 function norm(mVect::MultiVector{Data, GID, PID, LID}, n::Real) where {Data, GID, PID, LID}
     numVects = numVectors(mVect)
     localVectLength = localLength(mVect)

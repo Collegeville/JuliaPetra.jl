@@ -43,7 +43,7 @@ getLocalNumDiags(graph::CSRGraph) = graph.nodeNumDiags
 getGlobalMaxNumRowEntries(graph::CSRGraph) = graph.globalMaxNumRowEntries
 getLocalMaxNumRowEntries(graph::CSRGraph) = graph.nodeMaxNumRowEntries
 
-hasColMap(graph::CSRGraph) = graph.colMap != nothing
+hasColMap(graph::CSRGraph) = graph.colMap !== nothing
 
 isLowerTriangular(graph::CSRGraph) = graph.lowerTriangle
 isUpperTriangular(graph::CSRGraph) = graph.upperTriangle
@@ -319,7 +319,7 @@ function insertGlobalIndices(graph::CSRGraph{GID, PID, LID}, globalRow::GID,
 
     myRow = lid(graph.rowMap, globalRow)
     if myRow != 0
-        if false #for debuggin
+        if false #for debugging
             if hasColMap(graph)
                 colMap = graph.colMap
 
@@ -370,7 +370,8 @@ function insertGlobalIndicesFiltered(graph::CSRGraph{GID, PID, LID}, globalRow::
             colMap = getColMap(graph)
             indices = [index for index in indices if myLid(colMap, index)]
         end
-        insertGlobalIndicesImpl(myRow, indices)
+        #insertGlobalIndicesImpl(myRow, indices)
+        insertGlobalIndicesImpl(graph, myRow, indices)
     else
         #nonlocal row
         append!(graph.nonlocals[globalRow], indices)
@@ -508,13 +509,13 @@ end
 fillComplete(graph::CSRGraph; plist...) = fillComplete(graph, Dict(plist))
 
 function fillComplete(graph::CSRGraph, plist::Dict)
-    if graph.domainMap == nothing
+    if graph.domainMap === nothing
         domMap = graph.rowMap
     else
         domMap = graph.domainMap
     end
 
-    if graph.rangeMap == nothing
+    if graph.rangeMap === nothing
         ranMap = graph.colMap
     else
         ranMap = graph.rangeMap
@@ -609,7 +610,7 @@ function setAllIndices(graph::CSRGraph{GID, PID, LID},
 
     localNumRows = getLocalNumRows(graph)
 
-    if graph.colMap == nothing
+    if graph.colMap === nothing
         throw(InvalidStateError("The graph must have a "
                 * "column map before calling setAllIndices"))
     end

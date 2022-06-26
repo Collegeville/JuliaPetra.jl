@@ -161,7 +161,7 @@ mutable struct CSRGraph{GID <: Integer, PID <: Integer, LID <: Integer} <: RowGr
         #skipping sizeof checks
         #skipping max value checks related to size_t
 
-        @assert(indicesType != LOCAL_INDICES || colMap != nothing,
+        @assert(indicesType != LOCAL_INDICES || colMap !== nothing,
             "Cannot have local indices with a null column Map")
 
         #ensure LID is a subset of GID (for positive numbers)
@@ -228,7 +228,7 @@ function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::Union{BlockMap{GID, P
               STORAGE_1D_UNPACKED
             : STORAGE_2D),
 
-        (colMap == nothing) ? GLOBAL_INDICES : LOCAL_INDICES,
+        (colMap === nothing) ? GLOBAL_INDICES : LOCAL_INDICES,
         plist
     )
     allocateIndices(graph, graph.indicesType, LID(maxNumEntriesPerRow))
@@ -286,7 +286,7 @@ function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::Union{BlockMap{GID, P
               STORAGE_1D_UNPACKED
             : STORAGE_2D),
 
-        (colMap == nothing) ? GLOBAL_INDICES : LOCAL_INDICES,
+        (colMap === nothing) ? GLOBAL_INDICES : LOCAL_INDICES,
         plist
     )
 

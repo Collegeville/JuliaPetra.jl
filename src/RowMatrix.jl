@@ -221,9 +221,9 @@ function createColumnMapMultiVector(mat::RowMatrix{Data, GID, PID, LID}, X::Mult
     colMap = getColMap(mat)
 
     #if import object is trivial, don't need a seperate column map multivector
-    if importer != nothing || force
+    if importer !== nothing || force
         importMV = getColumnMapMultiVector(mat)
-        if importMV == nothing || numVectors(importMV) != numVecs
+        if importMV === nothing || numVectors(importMV) != numVecs
             importMV = DenseMultiVector{Data}(colMap, numVecs)
             setColumnMapMultiVector(mat, importMV)
         end
@@ -248,9 +248,9 @@ function createRowMapMultiVector(mat::RowMatrix{Data, GID, PID, LID}, Y::MultiVe
     exporter = getExporter(operator)
     rowMap = getRowMap(mat)
 
-    if exporter != nothing || force
+    if exporter !== nothing || force
         exportMV = getRowMapMultiVector(mat)
-        if exportMV == nothing || getNumVectors(exportMV) != numVecs
+        if exportMV === nothing || getNumVectors(exportMV) != numVecs
             exportMV = DenseMultiVector{Data}(rowMap, numVecs)
         end
         exportMV
@@ -288,7 +288,7 @@ function apply!(Y::MultiVector{Data, GID, PID, LID},
     end
 
     if mode == NO_TRANS
-        if importer == nothing
+        if importer === nothing
             XColMap = X
         else
             #need to import source multivector
@@ -296,7 +296,7 @@ function apply!(Y::MultiVector{Data, GID, PID, LID},
             doImport(X, XColMap, importer, INSERT)
         end
 
-        if exporter != nothing
+        if exporter !== nothing
             YRowMap = createRowMapMultiVector(operator, Y)
             localApply(YRowMap, operator, XColMap, NO_TRANS, alpha, ZERO)
 
@@ -323,7 +323,7 @@ function apply!(Y::MultiVector{Data, GID, PID, LID},
             end
         end
     else
-        if exporter == nothing
+        if exporter === nothing
             XRowMap = X
         else
             rowMapMV = createRowMapMultiVector(mat, X)
@@ -331,7 +331,7 @@ function apply!(Y::MultiVector{Data, GID, PID, LID},
             XRowMap = rowMapMV
         end
 
-        if importer != nothing
+        if importer !== nothing
             YColMap = createColumnMapMultiVector(mat, X)
             localApply(YColMap, operator, XRowMap, mode, alpha, ZERO)
 

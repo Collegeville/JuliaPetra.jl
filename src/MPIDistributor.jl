@@ -305,7 +305,7 @@ function createReverseDistributor(dist::MPIDistributor{GID, PID, LID}
         ) where {GID <: Integer, PID <: Integer, LID <: Integer}
     myProc = myPid(dist.comm)
 
-    if dist.planReverse == nothing
+    if dist.planReverse === nothing
         totalSendLength = reduce(+, dist.lengths_to)
 
         maxRecvLength::GID = 0
@@ -571,7 +571,7 @@ function resolveWaits(dist::MPIDistributor)::Array
         dist.status = MPI.Waitall!(dist.request)
     end
 
-    if dist.importObjs == nothing
+    if dist.importObjs === nothing
         throw(InvalidStateError("Cannot resolve waits when no posts have been made"))
     end
 
@@ -597,7 +597,7 @@ function resolveReversePosts(dist::MPIDistributor{GID, PID, LID},
         throw(InvalidStateError("Cannot do reverse comm when data is not blocked by processor"))
     end
 
-    if dist.planReverse == nothing
+    if dist.planReverse === nothing
         createReverseDistributor(dist)
     end
 
@@ -607,7 +607,7 @@ end
 
 function resolveReverseWaits(dist::MPIDistributor{GID, PID, LID}
     )::Vector where {GID <: Integer, PID <: Integer, LID <: Integer}
-    if dist.planReverse == nothing
+    if dist.planReverse === nothing
         throw(InvalidStateError("Cannot resolve reverse waits if there is no reverse plan"))
     end
 

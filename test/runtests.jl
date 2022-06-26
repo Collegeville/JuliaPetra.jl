@@ -1,7 +1,9 @@
 
 using JuliaPetra
+using LinearAlgebra
 using Test
 using TypeStability
+
 
 include("TestUtil.jl")
 

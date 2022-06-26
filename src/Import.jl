@@ -154,7 +154,7 @@ function setupExport(impor::Import{GID, PID, LID}, remoteGIDs::AbstractArray{GID
     data = impor.importData
     source = sourceMap(impor)
 
-    useRemotePIDs = userRemotePIDs != nothing
+    useRemotePIDs = userRemotePIDs !== nothing
 
     # Sanity Checks
     if useRemotePIDs && length(userRemotePIDs) != length(remoteGIDs)

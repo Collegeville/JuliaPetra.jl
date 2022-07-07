@@ -6,27 +6,27 @@ mutable struct BlockMapData{GID <: Integer, PID <:Integer, LID <: Integer}
     directory::Union{Directory, Nothing}
     lid::Vector{LID}
     myGlobalElements::Vector{GID}
-#    firstPointInElementList::Array{Integer}
-#    elementSizeList::Array{Integer}
-#    pointToElementList::Array{Integer}
+    firstPointInElementList::Array{Integer}
+    elementSizeList::Array{Integer}
+    pointToElementList::Array{Integer}
 
     numGlobalElements::GID
     numMyElements::LID
-#    elementSize::Integer
-#    minMyElementSize::Integer
-#    maxMyElementSize::Integer
-#    minElementSize::Integer
-#    maxElementSize::Integer
+    elementSize::Integer
+    minMyElementSize::Integer
+    maxMyElementSize::Integer
+    minElementSize::Integer
+    maxElementSize::Integer
     minAllGID::GID
     maxAllGID::GID
     minMyGID::GID
     maxMyGID::GID
     minLID::LID
     maxLID::LID
-#    numGlobalPoints::Integer
-#    numMyPoints::Integer
+    numGlobalPoints::Integer
+    numMyPoints::Integer
 
-#    constantElementSize::Bool
+    constantElementSize::Bool
     linearMap::Bool
     distributedGlobal::Bool
     oneToOneIsDetermined::Bool

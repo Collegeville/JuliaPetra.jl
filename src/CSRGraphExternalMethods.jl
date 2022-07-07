@@ -242,7 +242,6 @@ function insertLocalIndices(graph::CSRGraph{GID, PID, LID}, localRow::LID,
     indicesView = view(inds, 1:numEntries)
     insertLocalIndices(graph, localRow, indsT)
 end
-
 function insertLocalIndices(graph::CSRGraph{GID, PID, LID}, localRow::Integer,
         inds::AbstractArray{<:Integer, 1}) where {GID, PID, LID <: Integer}
     insertLocalIndices(graph, LID(localRow), Array{LID, 1}(inds))
@@ -378,6 +377,11 @@ function insertGlobalIndicesFiltered(graph::CSRGraph{GID, PID, LID}, globalRow::
     end
 end
 
+"""
+    getGlobalView(graph::CSRGraph, rowInfo::RowInfo)
+
+take the graph of a CSRMatrix and get its global IDs
+"""
 function getGlobalView(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo{LID}) where {GID <: Integer, PID, LID <: Integer}
     if rowInfo.allocSize > 0
         if length(graph.globalIndices1D) != 0
@@ -393,6 +397,11 @@ function getGlobalView(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo{LID}) wh
     end
 end
 
+"""
+    getGlobalViewPtr(graph::CSRGraph, rowInfo::RowInfo::Tuple)
+
+    take the graph of a CSRMatrix and get its pointers to global IDs, returned as a tuple of the pointer array and the GID array
+"""
 @inline function getGlobalViewPtr(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo{LID})::Tuple{Ptr{GID}, LID} where {GID <: Integer, PID, LID <: Integer}
     if rowInfo.allocSize > 0
         if length(graph.globalIndices1D) != 0
@@ -405,6 +414,11 @@ end
     return (Ptr{GID}(C_NULL), 0)
 end
 
+"""
+    getLocalView(graph::CSRGraph, rowInfo::RowInfo)
+
+    take the graph of a CSRMatrix and get its local IDs
+"""
 function getLocalView(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo{LID}) where {GID <: Integer, PID, LID <: Integer}
     if rowInfo.allocSize > 0
         if length(graph.localIndices1D) != 0
@@ -418,7 +432,11 @@ function getLocalView(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo{LID}) whe
     return LID
 end
 
+"""
+    getLocalViewPtr(graph::CSRGraph, rowInfo::RowInfo)
 
+    take the graph of a CSRMatrix and get its pointers to local IDs, returned as a tuple of the pointer array and an LID
+"""
 Base.@propagate_inbounds @inline function getLocalViewPtr(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo{LID})::Tuple{Ptr{LID}, LID} where {GID <: Integer, PID, LID <: Integer}
     if rowInfo.allocSize > 0
         if length(graph.localIndices1D) != 0
@@ -431,6 +449,11 @@ Base.@propagate_inbounds @inline function getLocalViewPtr(graph::CSRGraph{GID, P
     return (C_NULL, 0)
 end
 
+"""
+    getGlobalRowView(graph::CSRGraph, globalRow::GID)
+
+    take the graph of a CSRMatrix and get its global IDs for a certain row number
+"""
 function getGlobalRowView(graph::CSRGraph{GID}, globalRow::GID)::AbstractArray{GID, 1} where {GID <: Integer}
     if isLocallyIndexed(graph)
         throw(InvalidArgumentError("The graph's indices are currently stored as local indices, so a view with global column indices cannot be returned.  Use getGlobalRowCopy(::CSRGraph) instead"))
@@ -447,6 +470,11 @@ function getGlobalRowView(graph::CSRGraph{GID}, globalRow::GID)::AbstractArray{G
     retVal
 end
 
+"""
+    getGlobalRowViewPtr(graph::CSRGraph, globalRow::GID)
+
+    take the graph of a CSRMatrix and get its pointers to global IDs, returned as a tuple of the pointer array and an LID
+"""
 Base.@propagate_inbounds function getGlobalRowViewPtr(graph::CSRGraph{GID, PID, LID}, globalRow::GID)::Tuple{Ptr{GID}, LID} where {GID <: Integer, PID <: Integer, LID <: Integer}
     if isLocallyIndexed(graph)
         throw(InvalidArgumentError("The graph's indices are currently stored as local indices, so a view with global column indices cannot be returned.  Use getGlobalRowCopy(::CSRGraph) instead"))
@@ -466,6 +494,12 @@ Base.@propagate_inbounds function getGlobalRowViewPtr(graph::CSRGraph{GID, PID, 
     retVal
 end
 
+"""
+    getLocalRowView(graph::CSRGraph, localRow::GID)
+    getLocalRowView(graph::CSRGraph, rowInfo::RowInfo)
+
+    takes the graph of a CSRMatrix and returns as an array of local IDs for a certain row number
+"""
 function getLocalRowView(graph::CSRGraph{GID}, localRow::GID)::AbstractArray{GID, 1} where {GID}
     rowInfo = getRowInfoFromLocalRowIndex(graph, localRow)
 
@@ -473,7 +507,6 @@ function getLocalRowView(graph::CSRGraph{GID}, localRow::GID)::AbstractArray{GID
     recycleRowInfo(rowInfo)
     retVal
 end
-
 function getLocalRowView(graph::CSRGraph{GID, PID, LID}, rowInfo::RowInfo{LID}
         )::AbstractArray{GID, 1} where {GID, PID, LID}
 
@@ -490,6 +523,11 @@ end
 
 resumeFill(graph::CSRGraph; plist...) = resumeFill(graph, Dict(plist))
 
+"""
+    resumeFill(graph::CSRGraph, plist::Dict)
+
+    set boolean values to allow filling the CSRGraph
+"""
 function resumeFill(graph::CSRGraph, plist::Dict)
     if !hasRowInfo(graph)
         throw(InvalidStateError("Cannot resume fill of the CSRGraph, "
@@ -508,6 +546,13 @@ end
 
 fillComplete(graph::CSRGraph; plist...) = fillComplete(graph, Dict(plist))
 
+"""
+    fillComplete(graph::CSRGraph, plist::Dict)
+    fillComplete(graph::CSRGraph, domainMap::BlockMap, rangeMap::BlockMap, plist::Dict)
+    fillComplete(graph::CSRGraph, domainMap::BlockMap, rangeMap::BlockMap, plist...)
+
+    returns a boolean of whether the graph is filled
+"""
 function fillComplete(graph::CSRGraph, plist::Dict)
     if graph.domainMap === nothing
         domMap = graph.rowMap
@@ -566,6 +611,11 @@ function fillComplete(graph::CSRGraph{GID, PID, LID}, domainMap::BlockMap{GID, P
     checkInternalState(graph)
 end
 
+"""
+    makeColMap(graph::CSRGraph)
+
+    make a map of the columns using the given CSRGraph
+"""
 function makeColMap(graph::CSRGraph{GID, PID, LID}) where {GID, PID, LID}
     localNumRows = getLocalNumEntries(graph)
 

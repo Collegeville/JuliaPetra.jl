@@ -1,4 +1,3 @@
-
 export doImport, doExport
 export copyAndPermute, packAndPrepare, unpackAndCombine, checkSize
 export releaseViews, createViews, createViewsNonConst

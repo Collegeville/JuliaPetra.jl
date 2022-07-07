@@ -62,13 +62,23 @@ mutable struct CSRMatrix{Data <: Number, GID <: Integer, PID <: Integer, LID <: 
 end
 
 #### Constructors ####
-#TODO document Constructors
 
+"""
+    CSRMatrix(rowMap::BlockMap, maxNumEntriesPerRow::Union{Integer, Array}, pftype::ProfileType, plist...)
+
+creates a new CSRMatrix based on the row map and number of entries per row (plist as ...)
+"""
 function CSRMatrix{Data}(rowMap::BlockMap{GID, PID, LID},
         maxNumEntriesPerRow::Union{Integer, Array{<:Integer, 1}},
         pftype::ProfileType; plist...) where {Data, GID, PID, LID}
     CSRMatrix{Data}(rowMap, maxNumEntriesPerRow, pftype, Dict(plist))
 end
+
+"""
+    CSRMatrix(rowMap::BlockMap, maxNumEntriesPerRow::Union{Integer, Array}, pftype::ProfileType, plist::Dict)
+
+creates a new CSRMatrix based on the row map and number of entries per row (plist as Dict)
+"""
 function CSRMatrix{Data}(rowMap::BlockMap{GID, PID, LID},
         maxNumEntriesPerRow::Union{Integer, Array{<:Integer, 1}},
         pftype::ProfileType, plist::Dict) where {Data, GID, PID, LID}
@@ -91,13 +101,25 @@ function CSRMatrix{Data}(rowMap::BlockMap{GID, PID, LID},
         pftype, plist)
 end
 =#
+"""
+    CSRMatrix(rowMap::BlockMap, colMap::Union{BlockMap, Nothing}, maxNumEntriesPerRow::Union{Integer, Array}, pftype::ProfileType, 
+    plist...)
 
+creates a new CSRMatrix based on the row map, col map, and number of entries per row (plist as ...)
+"""
 function CSRMatrix{Data}(rowMap::BlockMap{GID, PID, LID},
         colMap::Union{BlockMap{GID, PID, LID}, Nothing},
         maxNumEntriesPerRow::Union{Integer, Array{<:Integer, 1}},
         pftype::ProfileType; plist...) where {Data, GID, PID, LID}
     CSRMatrix{Data}(rowMap, colMap, maxNumEntriesPerRow, pftype, Dict(plist))
 end
+
+"""
+    CSRMatrix(rowMap::BlockMap, colMap::Union{BlockMap, Nothing}, maxNumEntriesPerRow::Union{Integer, Array}, pftype::ProfileType, 
+    plist::Dict)
+
+creates a new CSRMatrix based on the row map, col map, and number of entries per row (plist as Dict)
+"""
 function CSRMatrix{Data}(rowMap::BlockMap{GID, PID, LID},
         colMap::Union{BlockMap{GID, PID, LID}, Nothing},
         maxNumEntriesPerRow::Union{Integer, Array{<:Integer, 1}},
@@ -112,10 +134,21 @@ function CSRMatrix{Data}(rowMap::BlockMap{GID, PID, LID},
     matrix
 end
 
+"""
+    CSRMatrix(graph:CSRGraph, plist...)
+
+creates a new CSRMatrix based on the CSRMap (plist as ...)
+"""
 function CSRMatrix{Data}(graph::CSRGraph{GID, PID, LID}; plist...
         ) where {Data, GID, PID, LID}
     CSRMatrix{Data}(graph, Dict(plist))
 end
+
+"""
+    CSRMatrix(graph:CSRGraph, plist::Dict)
+
+creates a new CSRMatrix based on the CSRMap (plist as Dict)
+"""
 function CSRMatrix{Data}(graph::CSRGraph{GID, PID, LID},plist::Dict
         ) where {Data, GID, PID, LID}
     numCols = numMyElements(getColMap(graph))
@@ -126,11 +159,22 @@ function CSRMatrix{Data}(graph::CSRGraph{GID, PID, LID},plist::Dict
     CSRMatrix(graph.rowMap, graph.colMap, graph, localMatrix, plist)
 end
 
+"""
+    CSRMatrix(rowMap::BlockMap, colMap::BlockMap, rowOffsets::AbstractArray, colIndices::AbstractArray, values::AbstractArray, plist...)
+
+creates a new CSRMatrix based on a row and col maps and the CSR format (plist as ...)
+"""
 function CSRMatrix(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
         rowOffsets::AbstractArray{LID, 1}, colIndices::AbstractArray{LID, 1}, values::AbstractArray{Data, 1};
         plist...) where {Data, GID, PID, LID}
     CSRMatrix(rowMap, colMap, rowOffsets, colIndices, values, Dict(plist))
 end
+
+"""
+    CSRMatrix(rowMap::BlockMap, colMap::BlockMap, rowOffsets::AbstractArray, colIndices::AbstractArray, values::AbstractArray, plist::Dict)
+
+creates a new CSRMatrix based on a row and col maps and the CSR format (plist as Dict)
+"""
 function CSRMatrix(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
         rowOffsets::AbstractArray{LID, 1}, colIndices::AbstractArray{LID, 1}, values::AbstractArray{Data, 1},
         plist::Dict) where {Data, GID, PID, LID}
@@ -150,11 +194,22 @@ function CSRMatrix(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, L
     CSRMatrix(rowMap, colMap, graph, localMatrix, plist)
 end
 
+"""
+    CSRMatrix(rowMap::BlockMap, colMap::BlockMap, localMatrix::LocalCSRMatrix plist...)
+
+creates a new CSRMatrix based on a row and col maps and a local CSR matrix (plist as ...)
+"""
 function CSRMatrix(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
         localMatrix::LocalCSRMatrix{Data, LID}; plist...
         ) where {Data, GID, PID, LID}
     CSRMatrix(rowMap, colMap, localMatrix, Dict(plist))
 end
+
+"""
+    CSRMatrix(rowMap::BlockMap, colMap::BlockMap, localMatrix::LocalCSRMatrix plist::Dict)
+
+creates a new CSRMatrix based on a row and col maps and a local CSR matrix (plist as Dict)
+"""
 function CSRMatrix(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
         localMatrix::LocalCSRMatrix{Data, LID}, plist::Dict
         ) where {Data, GID, PID, LID}
@@ -167,11 +222,22 @@ function CSRMatrix(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, L
     matrix
 end
 
+"""
+    CSRMatrix(rowMap::BlockMap, colMap::BlockMap, localMatrix::AbstractArray, plist...)
+
+creates a new CSRMatrix based on a row and col maps and a local matrix (plist as ...)
+"""
 function CSRMatrix(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
         localMatrix::AbstractArray{Data, 2}; plist...
         ) where {Data, GID, PID, LID}
     CSRMatrix(rowmap, colMap, localMatrix, Dict(plist))
 end
+
+"""
+    CSRMatrix(rowMap::BlockMap, colMap::BlockMap, localMatrix::AbstractArray, plist::Dict)
+
+creates a new CSRMatrix based on a row and col maps and a local matrix (plist as Dict)
+"""
 function CSRMatrix(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
         localMatrix::AbstractArray{Data, 2}, plist::Dict
         ) where {Data, GID, PID, LID}
@@ -182,7 +248,6 @@ function CSRMatrix(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, L
     rowIndices = collect(rowIndicesIter)
     rowOffsets = Array{LID, 1}(undef, size(localMatrix, 1)+1)
     row = 1
-    j = 1
     for i in LID(1):LID(length(rowIndices))
         if rowIndices[i] > row
             row += 1
@@ -197,6 +262,10 @@ end
 
 
 #### Internal methods ####
+
+"""
+    combineGlobalValues inserts the global row into the given matrix
+"""
 function combineGlobalValues(matrix::CSRMatrix{Data, GID, PID, LID},
         globalRow::GID, indices::AbstractArray{GID, 1},
         values::AbstractArray{Data, 1}, cm::CombineMode
@@ -217,6 +286,9 @@ computeGlobalConstants(matrix::CSRMatrix) = nothing
 #Tpetra's only clears forbNorm, exists only to be a parallel to CSRGraph
 clearGlobalConstants(matrix::CSRMatrix) = nothing
 
+"""
+    globalAssemble sorts/assembles the matrix
+"""
 function globalAssemble(matrix::CSRMatrix)
     comm = getComm(matrix)
     if !isFillActive(matrix)
@@ -325,7 +397,9 @@ function globalAssemble(matrix::CSRMatrix)
 end
 
 
-
+"""
+    fillLocalGraphAndMatrix takes a matrix and fills with a local matrix info
+"""
 function fillLocalGraphAndMatrix(matrix::CSRMatrix{Data, GID, PID, LID},
         plist::Dict) where {Data, GID, PID, LID}
     localNumRows = getLocalNumRows(matrix)
@@ -391,6 +465,7 @@ function fillLocalGraphAndMatrix(matrix::CSRMatrix{Data, GID, PID, LID},
         end
     end
 
+    #to optimize storage, make matrix and myGraph emptry
     if get(plist, :optimizeStorage, true)
         empty!(myGraph.localIndices2D)
         empty!(myGraph.numRowEntries)
@@ -533,8 +608,12 @@ end
 
 
 #### External methods ####
-#TODO document external methods
 
+"""
+   insertGlobalValues(matrix::CSRMatrix, globalRow::Integer, indices::AbstractArray, values::AbstractArray)
+
+    For a CSR matrix, insert values into the row at the indices given
+"""
 function insertGlobalValues(matrix::CSRMatrix{Data, GID, PID, LID}, globalRow::Integer,
         indices::AbstractArray{GID, 1}, values::AbstractArray{Data, 1}
         ) where {Data, GID, PID, LID}
@@ -563,7 +642,7 @@ function insertGlobalValues(matrix::CSRMatrix{Data, GID, PID, LID}, globalRow::I
         curNumEntries = rowInfo.numEntries
         newNumEntries = curNumEntries + numEntriesToInsert
         if newNumEntries > rowInfo.allocSize
-            if(getProfileType(matrix) == STATIC_PROFILE
+            if (getProfileType(matrix) == STATIC_PROFILE
                     && newNumEntries > rowInfo.allocSize)
                 throw(InvalidArgumentError("number of new indices exceed "
                         * "statically allocated graph structure"))
@@ -585,7 +664,11 @@ function insertGlobalValues(matrix::CSRMatrix{Data, GID, PID, LID}, globalRow::I
     nothing
 end
 
+"""
+    resumeFill(matrix::CSRMatrix, plist::Dict)
 
+    Resume fill of a CSR matrix by calling resumeFill of a CSRGraph
+"""
 function resumeFill(matrix::CSRMatrix, plist::Dict)
     resumeFill(matrix.myGraph, plist)
 
@@ -595,17 +678,31 @@ end
 
 fillComplete(matrix::CSRMatrix; plist...) = fillComplete(matrix, Dict(plist))
 
+"""
+    fillComplete(matrix::CSRMatrix, plist::Dict)
+
+    return a boolean of if matrix is filled based on graph
+"""
 function fillComplete(matrix::CSRMatrix, plist::Dict)
-    #TODO figure out if the second arg should be getColMap(matrix)
     fillComplete(matrix, getRowMap(matrix), getRowMap(matrix), plist)
 end
 
+"""
+    fillComplete(matrix::CSRMatrix, domainMap::BlockMap, rangeMap::BlockMap, plist...)
+
+    return a boolean of if matrix is filled based on graph maps
+"""
 function fillComplete(matrix::CSRMatrix{Data, GID, PID, LID},
         domainMap::BlockMap{GID, PID, LID}, rangeMap::BlockMap{GID, PID, LID};
         plist...) where {Data, GID, PID, LID}
     fillComplete(matrix, domainMap, rangeMap, Dict(plist))
 end
 
+"""
+    fillComplete(matrix::CSRMatrix, domainMap::BlockMap, rangeMap::BlockMap, plist::Dict)
+
+    return a boolean of if matrix is filled based on graph maps
+"""
 function fillComplete(matrix::CSRMatrix{Data, GID, PID, LID},
         domainMap::BlockMap{GID, PID, LID}, rangeMap::BlockMap{GID, PID, LID},
         plist::Dict) where {Data, GID, PID, LID}
@@ -653,7 +750,11 @@ end
 getProfileType(mat::CSRMatrix) = getProfileType(mat.myGraph)
 isStorageOptimized(mat::CSRMatrix) = isStorageOptimized(mat.myGraph)
 
+"""
+    getLocalDiagOffsets(matrix::CSRMatrix)
 
+    use the graph of the matrix to get the number of diagonal offsets
+"""
 function getLocalDiagOffsets(matrix::CSRMatrix{Data, GID, PID, LID})::AbstractArray{LID, 1} where {Data, GID, PID, LID}
     graph = matrix.myGraph
     localNumRows = getLocalNumRows(graph)
@@ -1061,3 +1162,6 @@ function localApply(Y::MultiVector{Data, GID, PID, LID},
 
     Y
 end
+
+
+#### TODO: Computational methods####

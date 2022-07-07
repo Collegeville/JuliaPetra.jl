@@ -177,6 +177,41 @@ function getVectorCopy(mVect::MultiVector{Data}, column)::Array{Data} where {Dat
     copyto!(Array{Data}(undef, size(view)), view)
 end
 
+"""
+    multiAbs(v::MultiVector)
+
+Returns a MultiVector where each entry is the absolute value of the corresponding entry in the given MultiVector
+"""
+function multiAbs(v::MultiVector)
+    numVects = numVectors(v)
+    length = localLength(v)
+    result = Array{Float64}(undef, (numVects, length))
+
+    for i=1:numVects
+        for j=1:length
+            result[i, j] = abs(v[i, j])
+        end
+    end
+    return result
+end
+
+"""
+    reciprocal(v::MultiVector{Data, GID, PID, LID})
+
+Returns a MultiVector where each entry is the reciprocal of the corresponding entry in the given MultiVector
+"""
+function reciprocal(v::MultiVector)
+    numVects = numVectors(v)
+    length = localLength(v)
+    result = Array{Float64}(undef, (numVects, length))
+
+    for i=1:numVects
+        for j=1:length
+            result[i, j] = 1/(v[i, j])
+        end
+    end
+    return result
+end
 #### DistObject Interface ####
 
 function checkSizes(source::MultiVector{Data, GID, PID, LID},

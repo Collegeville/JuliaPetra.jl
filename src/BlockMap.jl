@@ -233,9 +233,10 @@ function BlockMap(numGlobalElements::Integer, myGlobalElements::AbstractArray{GI
         data.maxMyGID = 0
     end
 
-    #TODO this doesn't check if there is overlap between processors
+    #=
+     this doesn't check if there is overlap between processors
     data.linearMap = Bool(minAll(data.comm, linear))
-
+=#
     if numProc(comm) == 1
         data.numGlobalElements = data.numMyElements
         data.minAllGID = data.minMyGID

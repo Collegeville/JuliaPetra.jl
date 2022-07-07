@@ -34,7 +34,7 @@ stability_warn(localApply, report)
 @test is_stable(report)
 
 
-#### Serial Tests####s
+#### Serial Tests####
 
 n = 8
 m = 6
@@ -46,6 +46,7 @@ LID = UInt8
 
 commObj = SerialComm{GID, PID, LID}()
 rowMap = BlockMap(n, n, commObj)
+colMap = BlockMap(2, 2, commObj)
 
 
 mat = CSRMatrix{Data}(rowMap, m, STATIC_PROFILE)
@@ -63,6 +64,13 @@ mat = CSRMatrix{Data}(rowMap, m, STATIC_PROFILE, Dict{Symbol, Any}())
 @test n == getGlobalNumRows(mat)
 @test n == getLocalNumRows(mat)
 
+#TODO ensure result of CSRMatrix(rowMap, colMap, localMatrix, plist) is fill complete
+#=
+rawVals = Float32[5, 8, 6, 2, 1, 6]
+rawCols =  UInt32[2, 4, 5, 2, 3, 1]
+localMatrix = LocalCSRMatrix(4, 5, rawVals, UInt32[1, 2, 4, 6, 7], rawCols)
+colRowMat = CSRMatrix(rowMap, colMap, localMatrix, Dict{Symbol, Any}())
+@test isFillComplete(colRowMat)=#
 
 @test 0 == getNumEntriesInLocalRow(mat, 2)
 @test 0 == getNumEntriesInGlobalRow(mat, 2)

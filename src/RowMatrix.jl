@@ -1,4 +1,3 @@
-
 export SrcDistRowMatrix, DistRowMatrix, RowMatrix
 export isFillActive, isLocallyIndexed
 export getGraph, getGlobalRowCopy, getLocalRowCopy, getGlobalRowView, getLocalRowView, getLocalDiagCopy, leftScale!, rightScale!

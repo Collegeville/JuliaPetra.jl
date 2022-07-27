@@ -212,6 +212,90 @@ function reciprocal(v::MultiVector)
     end
     return result
 end
+
+#min value for multivectors
+"""
+    minValue(v::MultiVector{Data, GID, PID, LID})
+
+Returns the minimum value of each vector in the given MultiVector
+"""
+function minValue(v::MultiVector{})
+    numVects = numVectors(v)
+    length = localLength(v)
+    min = Vector{Float64}(undef, numVects)
+
+    for i=1:numVects #each iteration of outer for loop is for each vector in the multivector
+        min[i] = v[i,1]#set the min for this vector as the first element
+        for j=1:length
+            if v[i,j] < min[i]
+                min[i] = v[i,j]
+            end
+        end
+    end
+    return min
+end
+
+#max value for multivectors
+"""
+    maxValue(v::MultiVector{Data, GID, PID, LID})
+
+Returns the maximum value of each vector in the given MultiVector
+"""
+function maxValue(v::MultiVector{})
+    numVects = numVectors(v)
+    length = localLength(v)
+    max = Vector{Float64}(undef, numVects)
+
+    for i=1:numVects #each iteration of outer for loop is for each vector in the multivector
+        max[i] = v[i,1] #set the max for this vector as the first element
+        for j=1:length
+            if v[i,j] > max[i]
+                max[i] = v[i,j]
+            end
+        end
+    end
+    return max
+end
+
+#mean value for multivectors
+"""
+    meanValue(v::MultiVector{Data, GID, PID, LID})
+
+Returns the mean value of each vector in the given MultiVector
+"""
+function meanValue(v::MultiVector{})
+    numVects = numVectors(v)
+    length = localLength(v)
+    mean = Vector{Float64}(undef, numVects)
+
+    for i=1:numVects #each iteration of outer for loop is for each vector in the multivector
+        sum = 0
+        for j=1:length
+            sum += v[i,j]
+        end
+        mean[i] = sum/length
+    end
+    return mean
+end
+
+"""
+    multiply(scalar::Float64, A::MultiVector, B::MultiVector)
+
+Returns a MultiVector of the element-by-element wise product of the given MultiVectors, then scaled by the given scalar
+"""
+function multiply(scalar::Float64, A::MultiVector, B::MultiVector)
+    comm = SerialComm{Int, Int, Int}()
+    rows = localLength(A)
+    cols = numVectors(B)
+    myMap = BlockMap(rows, cols, comm)
+    result = DenseMultiVector(myMap, Matrix{Float64}(undef, rows, cols))
+
+    result = A.*B
+    result = scale!(result, scalar)
+
+    return result
+end
+
 #### DistObject Interface ####
 
 function checkSizes(source::MultiVector{Data, GID, PID, LID},
@@ -298,22 +382,23 @@ Base.size(A::MultiVector) = (Int(globalLength(A)), Int(numVectors(A)))
 Base.axes(A::MultiVector) = (minMyGID(getMap(A)):maxMyGID(getMap(A)), 1:numVectors(A))
 
 function Base.getindex(A::MultiVector, row::Integer, col::Integer)
-    @boundscheck begin
+   #= @boundscheck begin
         if !(1<=col<=numVectors(A))
             throw(BoundsError(A, (row, col)))
         end
-    end
+    end=#
 
     lRow = lid(getMap(A), row)
 
-    @boundscheck begin
+    #=@boundscheck begin
         if lRow < 1
             throw(BoundsError(A, (row, col)))
         end
-    end
+    end=#
 
-    @inbounds value = getLocalArray(A)[lRow, col]
-    value
+   # @inbounds value = getLocalArray(A)[lRow, col]
+   value = getLocalArray(A)[lRow, col]
+   value
 end
 
 function Base.getindex(A::MultiVector, i::Integer)
@@ -323,32 +408,35 @@ function Base.getindex(A::MultiVector, i::Integer)
 
     lRow = lid(getMap(A), i)
 
-    @boundscheck begin
+   #= @boundscheck begin
         if lRow < 1
             throw(BoundsError(A, I))
         end
-    end
+    end=#
 
-    @inbounds value = getLocalArray(A)[lRow, 1]
+    #@inbounds value = getLocalArray(A)[lRow, 1]
+    value = getLocalArray(A)[lRow, 1]
     value
 end
 
 function Base.setindex!(A::MultiVector, v, row::Integer, col::Integer)
-    @boundscheck begin
+   #= @boundscheck begin
         if !(1<=col<=numVectors(A))
             throw(BoundsError(A, (row, col)))
         end
-    end
+    end=#
 
     lRow = lid(getMap(A), row)
+    #A[row, col] = v
 
-    @boundscheck begin
+    #=@boundscheck begin
         if lRow < 1
             throw(BoundsError(A, (row, col)))
         end
-    end
+    end=#
 
-    @inbounds getLocalArray(A)[lRow, 1] = v
+    #@inbounds getLocalArray(A)[lRow, 1] = v
+    getLocalArray(A)[lRow, 1] = v
     v
 end
 
@@ -359,13 +447,14 @@ function Base.setindex!(A::MultiVector, v, i::Integer)
 
     lRow = lid(getMap(A), i)
 
-    @boundscheck begin
+   #= @boundscheck begin
         if lRow < 1
             throw(BoundsError(A, I))
         end
-    end
+    end=#
 
-    @inbounds getLocalArray(A)[lRow, 1] = v
+    #@inbounds getLocalArray(A)[lRow, 1] = v
+    getLocalArray(A)[lRow, 1] = v
     v
 end
 

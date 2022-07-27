@@ -667,12 +667,12 @@ Base.axes(A::RowMatrix{GID}) where GID = if hasColMap(A)
 
 function Base.getindex(A::RowMatrix, I::Vararg{Int, 2})
     if isGloballyIndexed(A)
-        @boundscheck begin
-            (n, m) = size(A)
-            if I[1] > n || I[1] < 1 || I[2] > m || I[2] < 1
-                throw(BoundsError(A, I))
-            end
-        end
+       # @boundscheck begin
+          #  (n, m) = size(A)
+          #  if I[1] > n || I[1] < 1 || I[2] > m || I[2] < 1
+          #      throw(BoundsError(A, I))
+           # end
+        #end
         (rowInds, rowVals) = getGlobalRowView(A, I[0])
         for i in 1:length(rowInds)
             if rowInds[i] == I[1]

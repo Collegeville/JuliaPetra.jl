@@ -1138,11 +1138,14 @@ function localApply(Y::MultiVector{Data, GID, PID, LID},
                 for i in LID(1):LID(len)
                     ind::LID = unsafe_load(indices, i)
                     val::Data = unsafe_load(values, i)
-                    @inbounds sum += val*rawX[ind, vect]
+                    #@inbounds sum += val*rawX[ind, vect]
+                    sum += val*rawX[ind, vect]
                 end
                 sum = applyConjugation(mode, sum*alpha)
-                @inbounds rawY[row, vect] *= beta
-                @inbounds rawY[row, vect] += sum
+                #@inbounds rawY[row, vect] *= beta
+                rawY[row, vect] *= beta
+                #@inbounds rawY[row, vect] += sum
+                rawY[row, vect] += sum
             end
         end
     else
@@ -1159,9 +1162,133 @@ function localApply(Y::MultiVector{Data, GID, PID, LID},
             end
         end
     end
-
     Y
 end
 
+"""
+    invRowMax(A::CSRMatrix{})
+
+    Returns a vector of the inverse of the maximum absolute values of each row of A
+"""
+function invRowMax(A::CSRMatrix{})
+    rows = getGlobalNumRows(A)
+    inv = Vector{Float64}(undef, rows)
+
+    for i = 1:rows
+        (inds, vals) = getGlobalRowView(A, i)
+        cols = 0
+        for m = 1:length(inds)
+            if cols < inds[m]
+                cols = inds[m]
+            end
+        end
+        max = 0
+        for j = 1:cols
+            if abs(vals[j]) > max
+                max = abs(vals[j])
+            end
+        end
+        inv[i] = 1/max
+    end
+    return inv
+end
+
+"""
+    invRowSum(A::CSRMatrix{})
+
+    Returns a vector of the inverse of the sums of each row of A
+"""
+function invRowSum(A::CSRMatrix{})
+    rows = getGlobalNumRows(A)
+    inv = Vector{Float64}(undef, rows)
+
+    for i = 1:rows
+        (inds, vals) = getGlobalRowView(A, i)
+        cols = 0
+        for m = 1:length(inds)
+            if cols < inds[m]
+                cols = inds[m]
+            end
+        end
+        sum = 0
+        for j = 1:cols
+            sum += vals[j]
+        end
+        inv[i] = 1/sum
+    end
+end
+
+"""
+    invColMax(A::CSRMatrix{})
+
+    Returns a vector of the inverse of the maximum absolute values of each column of A
+"""
+function invColMax(A::CSRMatrix{})
+    rows = getGlobalNumRows(A)
+    inv = Vector{Float64}(undef, rows)
+    thisVal = Vector{Float64}(undef, rows)
+    cols = 0
+
+    for i = 1:rows
+        (inds, vals) = getGlobalRowView(A, i)
+        for j = 1:length(inds)
+            if inds[j] > cols
+                cols = inds[j]
+            end
+        end
+    end
+
+    for i = 1:cols
+        for j = 1:rows
+            (inds, vals) = getGlobalRowView(A, j)
+            thisVal[j] = vals[i]
+        end
+        max = 0
+        for k = 1:rows
+            if abs(thisVal[k]) > max
+                max = abs(thisVal[k])
+            end
+        end
+        inv[i] = 1/max
+    end
+    return inv
+end
+
+
+"""
+    invColSum(A::CSRMatrix{})
+
+    Returns a vector of the inverse of the sums of each column of A
+"""
+function invColSum(A::CSRMatrix{})
+    rows = getGlobalNumRows(A)
+    inv = Vector{Float64}(undef, rows)
+    thisVal = Vector{Float64}(undef, rows)
+    cols = 0
+
+    for i = 1:rows
+        (inds, vals) = getGlobalRowView(A, i)
+        for j = 1:length(inds)
+            if inds[j] > cols
+                cols = inds[j]
+            end
+        end
+    end
+
+    for i = 1:cols
+        for j = 1:rows
+            (inds, vals) = getGlobalRowView(A, j)
+            thisVal[j] = vals[i]
+        end
+        @show thisVal
+        sum = 0 
+        for k = 1:rows
+            sum += thisVal[k]
+        end
+        inv[i] = 1/sum
+    end
+    return inv
+end
+    
 
 #### TODO: Computational methods####

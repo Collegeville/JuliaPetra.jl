@@ -143,6 +143,6 @@ function denseMultiVectorTests(comm::Comm)
     doImport(source, target, expor, REPLACE)
     @test reshape(Array{Float64, 1}(collect(1:(3*n))), (n, 3)) == target.data
 
-    #TODO create import expor tests to test non trivial case
+    #TODO create import export tests to test non trivial case
 
 end

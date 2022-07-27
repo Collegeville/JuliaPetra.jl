@@ -20,8 +20,6 @@ Allocation profile for matrix/graph entries
 """
 @enum ProfileType STATIC_PROFILE DYNAMIC_PROFILE
 
-#TODO document the type and constructors
-
 mutable struct CSRGraph{GID <: Integer, PID <: Integer, LID <: Integer} <: RowGraph{GID, PID, LID}
     rowMap::BlockMap{GID, PID, LID}
     colMap::Union{BlockMap{GID, PID, LID}, Nothing}
@@ -180,8 +178,12 @@ end
 
 #### Constructors #####
 
+"""
+    CSRGraph(rowMap::BlockMap, maxNumEntriesPerRow::Integer, pftype::ProfileType, plist::.../Dict)
+
+"""
 function CSRGraph(rowMap::BlockMap{GID, PID, LID}, maxNumEntriesPerRow::Integer,
-        pftype::ProfileType; plist...) where {
+        pftype::ProfileType, plist...) where {
         GID <: Integer, PID <: Integer, LID <: Integer}
     CSRGraph(rowMap, LID(maxNumEntriesPerRow),  pftype, Dict(plist))
 end
@@ -193,7 +195,7 @@ end
 
 #= Should be handled by the following constructors
 function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
-        maxNumEntriesPerRow::Integer, pftype::ProfileType; plist...) where {
+        maxNumEntriesPerRow::Integer, pftype::ProfileType, plist...) where {
         GID <: Integer, PID <: Integer, LID <: Integer}
     CSRGraph(rowMap, colMap, LID(maxNumEntriesPerRow), pftype, Dict(plist))
 end
@@ -204,8 +206,12 @@ function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LI
 end
 =#
 
+"""
+    CSRGraph(rowMap::BlockMap, colMap::Union{BlockMap, Nothing}, maxNumEntriesPerRow::Integer, pftype::ProfileType, plist.../Dict)
+
+"""
 function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::Union{BlockMap{GID, PID, LID}, Nothing},
-        maxNumEntriesPerRow::Integer, pftype::ProfileType; plist...) where {
+        maxNumEntriesPerRow::Integer, pftype::ProfileType, plist...) where {
         GID <: Integer, PID <: Integer, LID <: Integer}
     CSRGraph(rowMap, colMap, maxNumEntriesPerRow, pftype, Dict(plist))
 end
@@ -239,8 +245,12 @@ function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::Union{BlockMap{GID, P
     graph
 end
 
+"""
+    CSRGraph(rowMap::BlockMap, numEntPerRow::AbstractArray, pftype::ProfileType, plist.../Dict)
+
+"""
 function CSRGraph(rowMap::BlockMap{GID, PID, LID}, numEntPerRow::AbstractArray{<:Integer, 1},
-        pftype::ProfileType; plist...)  where {
+        pftype::ProfileType, plist...)  where {
         GID <: Integer, PID <: Integer, LID <: Integer}
     CSRGraph(rowMap, numEntPerRow, pftype, Dict(plist))
 end
@@ -250,8 +260,12 @@ function CSRGraph(rowMap::BlockMap{GID, PID, LID}, numEntPerRow::AbstractArray{<
     CSRGraph(rowMap, nothing, numEntPerRow, pftype, plist)
 end
 
+"""
+    CSRGraph(rowMap::BlockMap, colMap::BlockMap, numEntPerRow::AbstractArray, pftype::ProfileType, plist.../Dict)
+
+"""
 function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
-        numEntPerRow::AbstractArray{<:Integer, 1}, pftype::ProfileType;
+        numEntPerRow::AbstractArray{<:Integer, 1}, pftype::ProfileType,
         plist...)  where {GID <: Integer, PID <: Integer, LID <: Integer}
     CSRGraph(rowMap, colMap, numEntPerRow, pftype, Dict(plist))
 end
@@ -261,8 +275,12 @@ function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LI
     CSRGraph(rowMap, colMap, numEntPerRow, pftype, plist)
 end
 
+"""
+    CSRGraph(rowMap::BlockMap, colMap::Union{BlockMap, Nothing}, numEntPerRow::AbstractArray, pftype::ProfileType, plist.../Dict)
+
+"""
 function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::Union{BlockMap{GID, PID, LID}, Nothing},
-        numEntPerRow::AbstractArray{<:Integer, 1}, pftype::ProfileType;
+        numEntPerRow::AbstractArray{<:Integer, 1}, pftype::ProfileType,
         plist...)  where {GID <: Integer, PID <: Integer, LID <: Integer}
     CSRGraph(rowMap, colMap, numEntPerRow, pftype, Dict(plist))
 end
@@ -304,9 +322,12 @@ function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::Union{BlockMap{GID, P
     graph
 end
 
+"""
+    CSRGraph(rowMap::BlockMap, colMap::BlockMap, rowPointers::AbstractArray, columnIndices::Array, plist.../Dict)
 
+"""
 function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
-        rowPointers::AbstractArray{LID, 1}, columnIndices::Array{LID, 1};
+        rowPointers::AbstractArray{LID, 1}, columnIndices::Array{LID, 1},
         plist...) where {GID <: Integer, PID <: Integer, LID <: Integer}
     CSRGraph(rowMap, colMap, rowPointers, columnIndices, Dict(plist))
 end
@@ -339,8 +360,12 @@ function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LI
     graph
 end
 
+"""
+    CSRGraph(rowMap::BlockMap, colMap::BlockMap, localGraph::LocalCSRGraph, plist.../Dict)
+
+"""
 function CSRGraph(rowMap::BlockMap{GID, PID, LID}, colMap::BlockMap{GID, PID, LID},
-        localGraph::LocalCSRGraph{LID, LID}; plist...) where {
+        localGraph::LocalCSRGraph{LID, LID}, plist...) where {
         GID <: Integer, PID <: Integer, LID <: Integer}
     CSRGraph(rowMap, colMap, localGraph, Dict(plist))
 end

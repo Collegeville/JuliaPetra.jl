@@ -10,22 +10,19 @@ struct Export{GID <: Integer, PID <:Integer, LID <: Integer}
     exportData::ImportExportData{GID, PID, LID}
 end
 
-#TODO document
-
 ## Constructors ##
 
+"""
+    Export(source::BlockMap, target::BlockMap, remotePIDs::Union{AbstractArray, Nothing}, plist...)
+"""
 function Export(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID}, remotePIDs::Union{AbstractArray{PID}, Nothing}=nothing; plist...) where {GID <: Integer, PID <: Integer, LID <: Integer}
     Export(source, target,
         Dict(Tuple{Symbol, Any}[pair for pair in plist]))
 end
-
-function Export(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID},
-        plist::Dict{Symbol}) where {GID <: Integer, PID <: Integer, LID <: Integer}
-    Export(source, target, nothing, plist)
-end
-
-function Export(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID},
-        remotePIDs::Union{AbstractArray{PID}, Nothing}, plist::Dict{Symbol}) where {
+"""
+    Export(source::BlockMap, target::BlockMap, remotePIDs::Union{AbstractArray, Nothing}, plist::Dict)
+"""
+function Export(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID}, remotePIDs::Union{AbstractArray{PID}, Nothing}, plist::Dict{Symbol}) where {
             GID <: Integer, PID <: Integer, LID <: Integer}
 
     expor = Export(ImportExportData(source, target))
@@ -37,6 +34,14 @@ function Export(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID}
     end
 
     expor
+end
+
+"""
+    Export(source::BlockMap, target::BlockMap, plist::Dict)
+"""
+function Export(source::BlockMap{GID, PID, LID}, target::BlockMap{GID, PID, LID},
+        plist::Dict{Symbol}) where {GID <: Integer, PID <: Integer, LID <: Integer}
+    Export(source, target, nothing, plist)
 end
 
 

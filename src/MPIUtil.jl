@@ -3,7 +3,7 @@ import MPI
 
 #TODO document
 
-# The RSend constand isn't defined on windows
+# The RSend constant isn't defined on windows
 const MPI_RSEND = if Sys.iswindows()
                       (:MPI_RSEND, MPI.libmpi)
                   else

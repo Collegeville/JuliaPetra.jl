@@ -65,6 +65,12 @@ mat = CSRMatrix{Data}(rowMap, m, STATIC_PROFILE, Dict{Symbol, Any}())
 @test n == getLocalNumRows(mat)
 
 #TODO ensure result of CSRMatrix(rowMap, colMap, localMatrix, plist) is fill complete
+#=val = Array{Data, 1}(undef, m)
+localGraph = 
+localMatrix = LocalCSRMatrix(m, val, localGraph)
+mat = CSRMatrix{Data}(rowMap, colMap, localMatrix)
+@test CSRMatrix
+=#
 #=
 rawVals = Float32[5, 8, 6, 2, 1, 6]
 rawCols =  UInt32[2, 4, 5, 2, 3, 1]
@@ -114,7 +120,7 @@ row = getLocalRowView(mat, 2)
 
 #=
 
-getGlobalNumCols(mat::CSRMatrix) = -1#TODO figure out
+getGlobalNumCols(mat::CSRMatrix) = -1  #TODO figure out
 getLocalNumCols(mat::CSRMatrix) = numCols(mat.localMatrix)
 =#
 
@@ -137,7 +143,7 @@ Y = DenseMultiVector(map, Data[1 0; 0 2])
 X = DenseMultiVector(map, Data[2 2; 2 2])
 
 
-@test Y === apply!(Y, mat, X, NO_TRANS, Data(3), Data(.5))
+@test Y === !(Y, mat, X, NO_TRANS, Data(3), Data(.5))
 
 @test Data[2 2; 2 2] == X.data #ensure X isn't mutated
 @test Data[30.5 30; 72 73] == Y.data

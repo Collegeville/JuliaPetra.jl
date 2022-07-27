@@ -36,6 +36,7 @@ mutable struct BlockMapData{GID <: Integer, PID <:Integer, LID <: Integer}
     lidHash::Dict{GID, LID}
 end
 
+
 function BlockMapData(numGlobalElements::GID, comm::Comm{GID, PID, LID}) where GID <: Integer where PID <: Integer where LID <: Integer
     BlockMapData(
         comm,

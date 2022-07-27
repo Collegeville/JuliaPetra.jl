@@ -286,7 +286,7 @@ function BlockMap(numGlobalElements::Integer, myGlobalElements::AbstractArray{GI
 end
 
 """
-    BlockMap(numGlobalElements, numMyElements, myGlobalElements, isDistributedGlobal, minAllGID, maxAllGID, comm)
+    BlockMap(numGlobalElements, numMyElements, myGlobalElements, isDistributedGlobal, userminAllGID, usermaxAllGID, comm)
 
 Constructor for user-defined arbitrary distribution of elements with all information on globals provided by the user
 """

@@ -57,7 +57,6 @@ function BlockMapData(numGlobalElements::GID, comm::Comm{GID, PID, LID}) where G
         false,
         false,
         false,
-
         GID(0),
         GID(0),
         Dict{GID, LID}()

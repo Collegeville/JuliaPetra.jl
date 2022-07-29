@@ -43,45 +43,6 @@ function BlockMapData(numGlobalElements::GID, comm::Comm{GID, PID, LID}) where G
         nothing,
         LID[],
         GID[],
-        Array{Integer}(),
-        Array{Integer}(),
-        Array{Integer}(),
-
-        numGlobalElements,
-        LID(0),
-        Integer,
-        Integer,
-        Integer,
-        Integer,
-        Integer,
-        GID(0),
-        GID(0),
-        GID(0),
-        GID(0),
-        LID(0),
-        LID(0),
-        Integer,
-        Integer,
-
-        false,
-        false,
-        false,
-        false,
-        false,
-        GID(0),
-        GID(0),
-        Dict{GID, LID}()
-    )
-end
-
-
-#=
-function BlockMapData(numGlobalElements::GID, comm::Comm{GID, PID, LID}) where GID <: Integer where PID <: Integer where LID <: Integer
-    BlockMapData(
-        comm,
-        nothing,
-        LID[],
-        GID[],
 
         numGlobalElements,
         LID(0),
@@ -96,6 +57,7 @@ function BlockMapData(numGlobalElements::GID, comm::Comm{GID, PID, LID}) where G
         false,
         false,
         false,
+
         GID(0),
         GID(0),
         Dict{GID, LID}()

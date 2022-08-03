@@ -1127,25 +1127,25 @@ function localApply(Y::MultiVector{Data, GID, PID, LID},
     rawY = getLocalArray(Y)
     rawX = getLocalArray(X)
 
-
-    #TODO implement this better, can BLAS be used?
+    #TODO implement this better
     if !isTransposed(mode)
         numRows = getLocalNumRows(A)
         for vect = LID(1):numVectors(Y)
             for row = LID(1):numRows
                 sum::Data = Data(0)
-                @inbounds (indices, values, len) = getLocalRowViewPtr(A, row)
+                #@inbounds (indices, values, len) = getLocalRowViewPtr(A, row)
+                @boundscheck((indices, values, len) = getLocalRowViewPtr(A, row))
                 for i in LID(1):LID(len)
                     ind::LID = unsafe_load(indices, i)
                     val::Data = unsafe_load(values, i)
                     #@inbounds sum += val*rawX[ind, vect]
-                    sum += val*rawX[ind, vect]
+                    @boundscheck (sum += val*rawX[ind, vect])
                 end
                 sum = applyConjugation(mode, sum*alpha)
                 #@inbounds rawY[row, vect] *= beta
-                rawY[row, vect] *= beta
+                @boundscheck (rawY[row, vect] *= beta)
                 #@inbounds rawY[row, vect] += sum
-                rawY[row, vect] += sum
+                @boundscheck (rawY[row, vect] += sum)
             end
         end
     else
@@ -1153,17 +1153,87 @@ function localApply(Y::MultiVector{Data, GID, PID, LID},
         numRows = getLocalNumRows(A)
         for vect = LID(1):numVectors(Y)
             for mRow in LID(1):numRows
-                @inbounds (indices, values, len) = getLocalRowViewPtr(A, mRow)
+                #@inbounds (indices, values, len) = getLocalRowViewPtr(A, mRow)
+                @boundscheck ((indices, values, len) = getLocalRowViewPtr(A, mRow))
                 for i in LID(1):LID(len)
                     ind::LID = unsafe_load(indices, i)
                     val::Data = unsafe_load(values, i)
-                    @inbounds rawY[ind, vect] += applyConjugation(mode, alpha*rawX[mRow, vect]*val)
+                    #@inbounds rawY[ind, vect] += applyConjugation(mode, alpha*rawX[mRow, vect]*val)
+                    @boundscheck (rawY[ind, vect] += applyConjugation(mode, alpha*rawX[mRow, vect]*val))
                 end
             end
         end
     end
     Y
 end
+
+"""
+    matVecMult(Y::MultiVector, A::CSRMatrix, X::MultiVector)
+
+Finds the product of matrix-vector multiplication of A and X
+"""
+function matVecMult(Y::MultiVector{Data, GID, PID, LID}, A::CSRMatrix{Data, GID, PID, LID}, X::MultiVector{Data, GID, PID, LID})
+ 
+    rawY = getLocalArray(Y)
+    rawX = getLocalArray(X)
+
+    m = getLocalNumRows(A)
+    n = localLength(X)
+
+    for row = LID(1):m
+        thisSum = 0
+        (inds, vals) = getGlobalRowView(A, row)
+        for col = LID(1):n
+            thisSum = thisSum + (vals[col] * rawX[col,1])
+        end
+        rawY[row,1] = thisSum
+    end
+    return Y
+end
+
+"""
+    power1(A::CSRMatrix, niter::Integer, tol)
+
+Power method on a CSRMatrix to solve for the dominant eigenvalue and eigenvector
+"""
+function power(A::CSRMatrix{}, niter::Integer, tol)
+    rows = getNumEntriesInLocalRow(A, 1)
+    comm = SerialComm{Int, Int, Int}()
+    Data = Float64
+    map = BlockMap(rows, rows, comm)
+    x = DenseMultiVector(map, Matrix{Float64}(ones(rows,1)))
+    nold = undef
+    n = undef
+
+    y = DenseMultiVector(map, Matrix{Float64}(undef, rows, rows))
+    alpha = Data(1)
+    beta = Data(1)
+
+    for k = 1:niter
+        y = matVecMult(y, A, x)
+        n = y[1,1]
+        for i = 2:numVectors(y)
+            for j = 2:localLength(y)
+                if abs(y[i,1]) > n
+                    n = y[i,1]
+                end
+            end
+        end
+
+        if k > 1
+            if abs(nold - n) <= tol
+                break
+            end
+        end
+
+        for j = 1:rows
+            x[j, 1] = y[j, 1]/n
+        end
+        nold = n
+    end
+    return x, n
+end
+
 
 """
     invRowMax(A::CSRMatrix{})
@@ -1289,6 +1359,3 @@ function invColSum(A::CSRMatrix{})
     end
     return inv
 end
-    
-
-#### TODO: Computational methods####

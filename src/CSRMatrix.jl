@@ -1133,19 +1133,15 @@ function localApply(Y::MultiVector{Data, GID, PID, LID},
         for vect = LID(1):numVectors(Y)
             for row = LID(1):numRows
                 sum::Data = Data(0)
-                #@inbounds (indices, values, len) = getLocalRowViewPtr(A, row)
-                @boundscheck((indices, values, len) = getLocalRowViewPtr(A, row))
+                @inbounds (indices, values, len) = getLocalRowViewPtr(A, row)
                 for i in LID(1):LID(len)
                     ind::LID = unsafe_load(indices, i)
                     val::Data = unsafe_load(values, i)
-                    #@inbounds sum += val*rawX[ind, vect]
-                    @boundscheck (sum += val*rawX[ind, vect])
+                    @inbounds sum += val*rawX[ind, vect]
                 end
                 sum = applyConjugation(mode, sum*alpha)
-                #@inbounds rawY[row, vect] *= beta
-                @boundscheck (rawY[row, vect] *= beta)
-                #@inbounds rawY[row, vect] += sum
-                @boundscheck (rawY[row, vect] += sum)
+                @inbounds rawY[row, vect] *= beta
+                @inbounds rawY[row, vect] += sum
             end
         end
     else
@@ -1153,13 +1149,11 @@ function localApply(Y::MultiVector{Data, GID, PID, LID},
         numRows = getLocalNumRows(A)
         for vect = LID(1):numVectors(Y)
             for mRow in LID(1):numRows
-                #@inbounds (indices, values, len) = getLocalRowViewPtr(A, mRow)
-                @boundscheck ((indices, values, len) = getLocalRowViewPtr(A, mRow))
+                @inbounds (indices, values, len) = getLocalRowViewPtr(A, mRow)
                 for i in LID(1):LID(len)
                     ind::LID = unsafe_load(indices, i)
                     val::Data = unsafe_load(values, i)
-                    #@inbounds rawY[ind, vect] += applyConjugation(mode, alpha*rawX[mRow, vect]*val)
-                    @boundscheck (rawY[ind, vect] += applyConjugation(mode, alpha*rawX[mRow, vect]*val))
+                    @inbounds rawY[ind, vect] += applyConjugation(mode, alpha*rawX[mRow, vect]*val)
                 end
             end
         end
@@ -1172,7 +1166,7 @@ end
 
 Finds the product of matrix-vector multiplication of A and X
 """
-function matVecMult(Y::MultiVector{Data, GID, PID, LID}, A::CSRMatrix{Data, GID, PID, LID}, X::MultiVector{Data, GID, PID, LID})
+function matVecMult(Y::MultiVector{}, A::CSRMatrix{}, X::MultiVector{})
  
     rawY = getLocalArray(Y)
     rawX = getLocalArray(X)
@@ -1192,20 +1186,20 @@ function matVecMult(Y::MultiVector{Data, GID, PID, LID}, A::CSRMatrix{Data, GID,
 end
 
 """
-    power1(A::CSRMatrix, niter::Integer, tol)
+    power(A::CSRMatrix, niter::Integer, tol)
 
 Power method on a CSRMatrix to solve for the dominant eigenvalue and eigenvector
 """
-function power(A::CSRMatrix{}, niter::Integer, tol)
+function power(A::CSRMatrix{Data}, niter, tol)
     rows = getNumEntriesInLocalRow(A, 1)
     comm = SerialComm{Int, Int, Int}()
     Data = Float64
     map = BlockMap(rows, rows, comm)
-    x = DenseMultiVector(map, Matrix{Float64}(ones(rows,1)))
+    x = DenseMultiVector(map, Matrix{Data}(ones(rows,1)))
     nold = undef
     n = undef
 
-    y = DenseMultiVector(map, Matrix{Float64}(undef, rows, rows))
+    y = DenseMultiVector(map, Matrix{Data}(undef, rows, rows))
     alpha = Data(1)
     beta = Data(1)
 
@@ -1240,9 +1234,9 @@ end
 
     Returns a vector of the inverse of the maximum absolute values of each row of A
 """
-function invRowMax(A::CSRMatrix{})
+function invRowMax(A::CSRMatrix{Data})
     rows = getGlobalNumRows(A)
-    inv = Vector{Float64}(undef, rows)
+    inv = Vector{Data}(undef, rows)
 
     for i = 1:rows
         (inds, vals) = getGlobalRowView(A, i)
@@ -1268,9 +1262,9 @@ end
 
     Returns a vector of the inverse of the sums of each row of A
 """
-function invRowSum(A::CSRMatrix{})
+function invRowSum(A::CSRMatrix{Data})
     rows = getGlobalNumRows(A)
-    inv = Vector{Float64}(undef, rows)
+    inv = Vector{Data}(undef, rows)
 
     for i = 1:rows
         (inds, vals) = getGlobalRowView(A, i)
@@ -1293,10 +1287,10 @@ end
 
     Returns a vector of the inverse of the maximum absolute values of each column of A
 """
-function invColMax(A::CSRMatrix{})
+function invColMax(A::CSRMatrix{Data})
     rows = getGlobalNumRows(A)
-    inv = Vector{Float64}(undef, rows)
-    thisVal = Vector{Float64}(undef, rows)
+    inv = Vector{Data}(undef, rows)
+    thisVal = Vector{Data}(undef, rows)
     cols = 0
 
     for i = 1:rows
@@ -1330,10 +1324,10 @@ end
 
     Returns a vector of the inverse of the sums of each column of A
 """
-function invColSum(A::CSRMatrix{})
+function invColSum(A::CSRMatrix{Data})
     rows = getGlobalNumRows(A)
-    inv = Vector{Float64}(undef, rows)
-    thisVal = Vector{Float64}(undef, rows)
+    inv = Vector{Data}(undef, rows)
+    thisVal = Vector{Data}(undef, rows)
     cols = 0
 
     for i = 1:rows

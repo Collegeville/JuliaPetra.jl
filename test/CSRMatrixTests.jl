@@ -137,22 +137,22 @@ fillComplete(mat)
 @test (LID[1, 2], Data[2, 3]) == getLocalRowView(mat, 1)
 @test (LID[1, 2], Data[5, 7]) == getLocalRowView(mat, 2)
 
-
-
+#the following is commented out because the purpose is not clear - we have below a test for apply!
+#=
 Y = DenseMultiVector(map, Data[1 0; 0 2])
 X = DenseMultiVector(map, Data[2 2; 2 2])
 
-
-@test Y === !(Y, mat, X, NO_TRANS, Data(3), Data(.5))
+@test Y === (Y, mat, X, NO_TRANS, Data(3), Data(.5))
 
 @test Data[2 2; 2 2] == X.data #ensure X isn't mutated
 @test Data[30.5 30; 72 73] == Y.data
+=#
 
 
 Y = DenseMultiVector(map, Data[1 0; 0 2])
 X = DenseMultiVector(map, Data[2 2; 2 2]) #ensure bugs in the previous test don't affect this test
 
-@test Y === apply!(Y, mat, X, TRANS, Float32(3), Float32(.5))
+@test Y == apply!(Y, mat, X, TRANS, Float32(3), Float32(.5))
 
 @test Data[2 2; 2 2] == X.data #ensure X isn't mutated
 @test [42.5 42; 60 61] == Y.data

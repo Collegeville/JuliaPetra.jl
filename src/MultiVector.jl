@@ -182,10 +182,10 @@ end
 
 Returns a MultiVector where each entry is the absolute value of the corresponding entry in the given MultiVector
 """
-function multiAbs(v::MultiVector)
+function multiAbs(v::MultiVector{Data})
     numVects = numVectors(v)
     length = localLength(v)
-    result = Array{Float64}(undef, (numVects, length))
+    result = Array{Data}(undef, (numVects, length))
 
     for i=1:numVects
         for j=1:length
@@ -200,10 +200,10 @@ end
 
 Returns a MultiVector where each entry is the reciprocal of the corresponding entry in the given MultiVector
 """
-function reciprocal(v::MultiVector)
+function reciprocal(v::MultiVector{Data})
     numVects = numVectors(v)
     length = localLength(v)
-    result = Array{Float64}(undef, (numVects, length))
+    result = Array{Data}(undef, (numVects, length))
 
     for i=1:numVects
         for j=1:length
@@ -219,10 +219,10 @@ end
 
 Returns the minimum value of each vector in the given MultiVector
 """
-function minValue(v::MultiVector{})
+function minValue(v::MultiVector{Data})
     numVects = numVectors(v)
     length = localLength(v)
-    min = Vector{Float64}(undef, numVects)
+    min = Vector{Data}(undef, numVects)
 
     for i=1:numVects #each iteration of outer for loop is for each vector in the multivector
         min[i] = v[i,1]#set the min for this vector as the first element
@@ -241,10 +241,10 @@ end
 
 Returns the maximum value of each vector in the given MultiVector
 """
-function maxValue(v::MultiVector{})
+function maxValue(v::MultiVector{Data})
     numVects = numVectors(v)
     length = localLength(v)
-    max = Vector{Float64}(undef, numVects)
+    max = Vector{Data}(undef, numVects)
 
     for i=1:numVects #each iteration of outer for loop is for each vector in the multivector
         max[i] = v[i,1] #set the max for this vector as the first element
@@ -263,10 +263,10 @@ end
 
 Returns the mean value of each vector in the given MultiVector
 """
-function meanValue(v::MultiVector{})
+function meanValue(v::MultiVector{Data})
     numVects = numVectors(v)
     length = localLength(v)
-    mean = Vector{Float64}(undef, numVects)
+    mean = Vector{Data}(undef, numVects)
 
     for i=1:numVects #each iteration of outer for loop is for each vector in the multivector
         sum = 0
@@ -283,12 +283,12 @@ end
 
 Returns a MultiVector of the element-by-element wise product of the given MultiVectors, then scaled by the given scalar
 """
-function multiply(scalar::Float64, A::MultiVector, B::MultiVector)
+function multiply(scalar, A::MultiVector{Data}, B::MultiVector{Data})
     comm = SerialComm{Int, Int, Int}()
     rows = localLength(A)
     cols = numVectors(B)
     myMap = BlockMap(rows, cols, comm)
-    result = DenseMultiVector(myMap, Matrix{Float64}(undef, rows, cols))
+    result = DenseMultiVector(myMap, Matrix{Data}(undef, rows, cols))
 
     result = A.*B
     result = scale!(result, scalar)
